@@ -13,6 +13,8 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(5);
         });
 
+        services.AddSingleton<BCoinCouponStateStore>();
+
         services.Scan(scan =>
             scan.FromAssemblyOf<IAccountDomainService>()
                 .AddClasses(classes => classes.AssignableTo<IDomainService>())
