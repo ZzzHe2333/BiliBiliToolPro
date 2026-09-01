@@ -187,7 +187,7 @@ Zzz_ChargeTaskConfig__Accounts__<B站UID>__AutoChargeUpId=18461303
 
 青龙最终执行时间以面板中对应定时任务的 Cron 为准，可以直接在面板中修改。
 
-## 7. fork 专用运行模式变量
+## 7. fork 专用运行与网络变量
 
 如果需要让本 fork 和原版使用不同运行模式，可使用：
 
@@ -208,7 +208,31 @@ GitHub Release 下载代理可单独配置：
 Zzz_BILI_GITHUB_PROXY=""
 ```
 
-未设置 `Zzz_BILI_MODE` / `Zzz_BILI_GITHUB_PROXY` 时，会兼容读取原来的 `BILI_MODE` / `BILI_GITHUB_PROXY`。
+### 7.1. 中国大陆包源
+
+本 fork 的主要使用环境是中国大陆，因此青龙首次安装依赖/.NET 时，默认将 Debian/Alpine 官方软件源切换为中科大镜像：
+
+```text
+https://mirrors.ustc.edu.cn
+```
+
+支持传统 Debian `/etc/apt/sources.list`、Debian 12+ 容器常见的 `/etc/apt/sources.list.d/debian.sources`，以及 Alpine `/etc/apk/repositories`。修改前会保留一次 `.bak` 备份。
+
+默认等价于：
+
+```bash
+Zzz_BILI_USE_CN_MIRROR=true
+```
+
+如果服务器位于境外、已有自己的软件源，或不希望脚本修改包源，可设置：
+
+```bash
+Zzz_BILI_USE_CN_MIRROR=false
+```
+
+脚本不再通过访问 Google 判断网络地区，避免中国大陆环境下误判或无意义等待。
+
+未设置 `Zzz_BILI_MODE` / `Zzz_BILI_GITHUB_PROXY` / `Zzz_BILI_USE_CN_MIRROR` 时，会兼容读取对应的 `BILI_*` 变量；其中国内包源默认开启。
 
 ## 8. GitHub 加速
 
@@ -249,6 +273,12 @@ Zzz_BILI_MODE=bilitool
 ```
 
 如果使用 `dotnet` 模式，则需要青龙容器能够正常安装/运行 .NET 8。
+
+如果不希望使用默认中国大陆镜像，可先设置：
+
+```bash
+Zzz_BILI_USE_CN_MIRROR=false
+```
 
 ### 9.4. Couldn't find a valid ICU package installed on the system
 
