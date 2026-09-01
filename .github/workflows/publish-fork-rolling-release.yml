@@ -1,0 +1,73 @@
+name: Publish fork rolling release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'scripts/publish.sh'
+      - 'common.props'
+      - 'Directory.Packages.props'
+      - '.github/workflows/publish-fork-rolling-release.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fork-rolling-release
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build fork rolling binaries
+    if: ${{ github.repository == 'ZzzHe2333/BiliBiliToolPro' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build self-contained binaries
+        run: |
+          cd ./scripts
+          chmod +x ./publish.sh
+          ./publish.sh --runtime all
+
+      - name: Prepare stable Qinglong asset names
+        run: |
+          set -euo pipefail
+          publish_dir="./src/Ray.BiliBiliTool.Console/bin/Publish"
+          version="$(cat "$publish_dir/version.txt")"
+          for runtime in linux-x64 linux-musl-x64 linux-arm64 linux-arm linux-musl-arm64; do
+            source_file="$publish_dir/bilibili-tool-pro-v${version}-${runtime}.zip"
+            target_file="$publish_dir/bilibili-tool-pro-fork-main-${runtime}.zip"
+            test -f "$source_file"
+            cp "$source_file" "$target_file"
+          done
+          printf '%s\n' "$GITHUB_SHA" > "$publish_dir/fork-main-commit.txt"
+
+      - name: Replace rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release delete fork-main --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create fork-main \
+            ./src/Ray.BiliBiliTool.Console/bin/Publish/bilibili-tool-pro-fork-main-linux-x64.zip \
+            ./src/Ray.BiliBiliTool.Console/bin/Publish/bilibili-tool-pro-fork-main-linux-musl-x64.zip \
+            ./src/Ray.BiliBiliTool.Console/bin/Publish/bilibili-tool-pro-fork-main-linux-arm64.zip \
+            ./src/Ray.BiliBiliTool.Console/bin/Publish/bilibili-tool-pro-fork-main-linux-arm.zip \
+            ./src/Ray.BiliBiliTool.Console/bin/Publish/bilibili-tool-pro-fork-main-linux-musl-arm64.zip \
+            ./src/Ray.BiliBiliTool.Console/bin/Publish/fork-main-commit.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Fork main rolling build" \
+            --notes "Automated self-contained Qinglong build from commit $GITHUB_SHA" \
+            --prerelease
