@@ -11,16 +11,21 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: read
+  packages: write
+
 env:
-  DOCKERHUB_USERNAME : ${{ secrets.DOCKERHUB_USERNAME }}
-  DOCKERHUB_PASSWORD : ${{ secrets.DOCKERHUB_PASSWORD }}
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
   GHCR_USERNAME: ${{ github.repository_owner }}
   GHCR_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-  DOCKER_IMG_NAME: "zai7lou/bili_tool_web"
-  GHC_IMG_NAME: "ghcr.io/raywangqvq/bili_tool_web"
+  GHCR_IMG_NAME: "ghcr.io/zzzhe2333/bili_tool_web"
 
 jobs:
   PublishImage:
+    # fork-main 是青龙 bilitool 的滚动二进制预发布，不应触发正式容器镜像发布。
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.release.tag_name != 'fork-main' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,15 +33,16 @@ jobs:
 
       - name: GetTargetVersion
         id: getTargetVersion
+        shell: bash
         run: |
-          TargetVersion=""
-          if [ "${{ github.event.release.tag_name }}" ] ; then
-            TargetVersion=${{ github.event.release.tag_name }}
+          set -euo pipefail
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            target_version="${{ github.event.release.tag_name }}"
           else
-            TargetVersion=$(grep -oP '(?<=<Version>).*?(?=<\/Version>)' ./common.props)
+            target_version="$(grep -oP '(?<=<Version>).*?(?=<\/Version>)' ./common.props)"
           fi
-          echo "TargetVersion: $TargetVersion"
-          echo "TargetVersion=$TargetVersion" >> $GITHUB_OUTPUT
+          echo "TargetVersion: $target_version"
+          echo "TargetVersion=$target_version" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -45,6 +51,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Login to DockerHub
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_PASSWORD != '' }}
         uses: docker/login-action@v4
         with:
           username: ${{ env.DOCKERHUB_USERNAME }}
@@ -59,20 +66,40 @@ jobs:
 
       - name: Generate tags
         id: tags
+        shell: bash
         run: |
-          targetVersion="${{ steps.getTargetVersion.outputs.TargetVersion }}"
-          dockerTagWithVersion="${{ env.DOCKER_IMG_NAME }}:$targetVersion"
-          ghcrTagWithVersion="${{ env.GHC_IMG_NAME }}:$targetVersion"
-          dockerTagWithLatest=""
-          ghcrTagWithLatest=""
-          if [ "${{ github.event.inputs.autoWithLatestTag }}" == "true" ] || [ ${{ github.event.release.created_at }} ]; then
-            dockerTagWithLatest="${{ env.DOCKER_IMG_NAME }}:latest"
-            ghcrTagWithLatest="${{ env.GHC_IMG_NAME }}:latest"
+          set -euo pipefail
+          target_version="${{ steps.getTargetVersion.outputs.TargetVersion }}"
+          tags_file="$(mktemp)"
+          trap 'rm -f "$tags_file"' EXIT
+
+          echo "${GHCR_IMG_NAME}:${target_version}" >> "$tags_file"
+
+          dockerhub_enabled=false
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_PASSWORD" ]; then
+            dockerhub_enabled=true
+            echo "${DOCKERHUB_USERNAME}/bili_tool_web:${target_version}" >> "$tags_file"
           fi
-          echo "dockerTagWithVersion=$dockerTagWithVersion" >> $GITHUB_OUTPUT
-          echo "ghcrTagWithVersion=$ghcrTagWithVersion" >> $GITHUB_OUTPUT
-          echo "dockerTagWithLatest=$dockerTagWithLatest" >> $GITHUB_OUTPUT
-          echo "ghcrTagWithLatest=$ghcrTagWithLatest" >> $GITHUB_OUTPUT
+
+          publish_latest=false
+          if [ "${{ github.event_name }}" = "release" ] || [ "${{ inputs.autoWithLatestTag }}" = "true" ]; then
+            publish_latest=true
+          fi
+
+          if [ "$publish_latest" = true ]; then
+            echo "${GHCR_IMG_NAME}:latest" >> "$tags_file"
+            if [ "$dockerhub_enabled" = true ]; then
+              echo "${DOCKERHUB_USERNAME}/bili_tool_web:latest" >> "$tags_file"
+            fi
+          fi
+
+          echo "将发布以下镜像标签："
+          cat "$tags_file"
+          {
+            echo 'tags<<EOF'
+            cat "$tags_file"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build and push
         uses: docker/build-push-action@v7
@@ -80,8 +107,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ${{ steps.tags.outputs.dockerTagWithVersion }}
-            ${{ steps.tags.outputs.ghcrTagWithVersion }}
-            ${{ steps.tags.outputs.dockerTagWithLatest }}
-            ${{ steps.tags.outputs.ghcrTagWithLatest }}
+          tags: ${{ steps.tags.outputs.tags }}
