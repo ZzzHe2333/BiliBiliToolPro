@@ -64,18 +64,14 @@ const logFile = process.argv[3];
 const taskStatus = Number(process.argv[4] || 0);
 const qlDir = process.env.QL_DIR || '/ql';
 const qlDataDir = (process.env.QL_DATA_DIR || path.join(qlDir, 'data')).replace(/\/$/, '');
-const statusText = taskStatus === 0 ? '成功' : `失败(${taskStatus})`;
+const statusText = taskStatus === 0 ? '成功' : taskStatus === 2 ? '部分失败' : `失败(${taskStatus})`;
 const title = `Zzz-Bili ${targetCode} - ${statusText}`;
 
 function redactSensitiveContent(content) {
-  // B站 Cookie 常见敏感字段。无论它们出现在普通文本、JSON value 还是整段 Cookie 中，
-  // 只保留字段名，不把真实值带到任何外部通知渠道。
   content = content.replace(
     /\b(SESSDATA|bili_jct|DedeUserID__ckMd5|DedeUserID|sid|buvid3|buvid4|buvid_fp|buvid_fp_plain|b_nut|b_lsid|_uuid|ac_time_value|access_key|bili_ticket)\s*=\s*([^;\s"'<>]+)/gi,
     '$1=[已隐藏]'
   );
-
-  // 青龙环境变量整行、HTTP Cookie/Authorization 头以及常见 token/密钥。
   content = content.replace(/(Zzz_BiliBiliCookies__\d+\s*[:=]\s*)[^\r\n]+/gi, '$1[已隐藏]');
   content = content.replace(/((?:Cookie|Set-Cookie|Authorization)\s*[:=]\s*)[^\r\n]+/gi, '$1[已隐藏]');
   content = content.replace(
@@ -83,7 +79,6 @@ function redactSensitiveContent(content) {
     '$1[已隐藏]$2'
   );
   content = content.replace(/\b((?:access_token|refresh_token|client_secret|qrcode_key)=)[^&\s]+/gi, '$1[已隐藏]');
-
   return content;
 }
 
@@ -95,11 +90,8 @@ function prepareContent() {
     return `任务退出码：${taskStatus}\n读取任务日志失败：${error.message}`;
   }
 
-  // 去掉 ANSI 控制字符，避免污染通知正文。
   content = content.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -\/]*[@-~])/g, '');
 
-  // dotnet run 可能先输出编译告警。正常启动后只推送 BiliTool 本身的运行日志；
-  // 如果连程序都没启动成功，则保留完整输出，便于排查编译/启动错误。
   const marker = 'BiliBiliToolPro 开始运行...';
   const markerIndex = content.indexOf(marker);
   if (markerIndex >= 0) {
@@ -107,13 +99,11 @@ function prepareContent() {
     content = content.slice(lineStart >= 0 ? lineStart + 1 : markerIndex);
   }
 
-  // 在任何通知发送、截断之前先脱敏，防止敏感字段进入系统通知或环境变量兜底通知。
   content = redactSensitiveContent(content);
 
   content = content.trim();
   if (!content) content = `任务执行结束，退出码：${taskStatus}`;
 
-  // 部分通知渠道有正文长度限制；超长时保留开头和结尾，避免整条推送失败。
   const maxLength = 16000;
   if (content.length > maxLength) {
     const half = Math.floor((maxLength - 80) / 2);
@@ -129,8 +119,6 @@ function trySystemNotify(content) {
     return false;
   }
 
-  // 独立子进程调用青龙 client.js。这样即使 client.js 初始化时直接 process.exit，
-  // 主通知进程仍能继续执行环境变量兜底。
   const childCode = `
 const fs = require('fs');
 (async () => {
@@ -210,6 +198,7 @@ run_task() {
     local target_code=$1
     local log_file
     local task_status
+    local logical_status
 
     export Zzz_PlatformType=QingLong
     export Zzz_RunTasks="$target_code"
@@ -219,7 +208,6 @@ run_task() {
     log_file="$(mktemp "/tmp/zzz-bili-${target_code}.XXXXXX.log")"
     cd "$qinglong_bili_repo_dir/src/Ray.BiliBiliTool.Console"
 
-    # 即使主程序失败也先保留退出码并发送一次结果通知，最后再把原退出码返回给青龙。
     set +e
     if [ "$prefer_mode" == "dotnet" ]; then
         dotnet run --ENVIRONMENT=Production 2>&1 | tee "$log_file"
@@ -232,8 +220,14 @@ run_task() {
     fi
     set -e
 
-    send_qinglong_notification "$target_code" "$log_file" "$task_status" || true
+    logical_status=$task_status
+    if [ "$task_status" -eq 0 ] && grep -Eq '\[[^]]* (ERR|FTL)\]' "$log_file"; then
+        logical_status=2
+        echo "[Zzz-Bili] 主进程退出码为0，但检测到 Error/Fatal 级日志，本次任务标记为部分失败"
+    fi
+
+    send_qinglong_notification "$target_code" "$log_file" "$logical_status" || true
     rm -f "$log_file"
 
-    return "$task_status"
+    return "$logical_status"
 }
