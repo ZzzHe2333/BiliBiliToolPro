@@ -1,10 +1,26 @@
 name: Publish image
 
 on:
+  workflow_call:
+    inputs:
+      imageTag:
+        description: 'Container image tag to publish'
+        required: true
+        type: string
+      publishLatest:
+        description: 'Also update latest'
+        required: false
+        default: true
+        type: boolean
   workflow_dispatch:
     inputs:
-      autoWithLatestTag:
-        description: 'Auto Add Latest Tag'
+      imageTag:
+        description: 'Optional image tag; blank uses manual-<commit>'
+        required: false
+        default: ''
+        type: string
+      publishLatest:
+        description: 'Also update latest'
         required: true
         default: true
         type: boolean
@@ -35,25 +51,59 @@ env:
 
 jobs:
   PublishImage:
-    # fork-main 是青龙 bilitool 的滚动二进制预发布，不应触发 Web 容器镜像发布。
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.release.tag_name != 'fork-main' }}
+    # fork-main 是青龙 bilitool 的滚动二进制预发布，不属于 Web 容器正式版本。
+    if: ${{ github.event_name != 'release' || github.event.release.tag_name != 'fork-main' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: GetTargetVersion
-        id: getTargetVersion
+      - name: Resolve image tag
+        id: image
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "${{ github.event.release.tag_name }}" ]; then
-            target_version="${{ github.event.release.tag_name }}"
-          else
-            target_version="$(grep -oP '(?<=<Version>).*?(?=<\/Version>)' ./common.props)"
+
+          event_name="${{ github.event_name }}"
+          requested_tag="${{ inputs.imageTag }}"
+          publish_latest="false"
+
+          case "$event_name" in
+            push)
+              image_tag="main-${GITHUB_SHA::12}"
+              publish_latest="true"
+              ;;
+            release)
+              image_tag="${{ github.event.release.tag_name }}"
+              publish_latest="true"
+              ;;
+            workflow_call)
+              image_tag="$requested_tag"
+              publish_latest="${{ inputs.publishLatest }}"
+              ;;
+            workflow_dispatch)
+              if [ -n "$requested_tag" ]; then
+                image_tag="$requested_tag"
+              else
+                image_tag="manual-${GITHUB_SHA::12}"
+              fi
+              publish_latest="${{ inputs.publishLatest }}"
+              ;;
+            *)
+              echo "Unsupported event: $event_name" >&2
+              exit 1
+              ;;
+          esac
+
+          if [[ ! "$image_tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+            echo "Invalid container tag: $image_tag" >&2
+            exit 1
           fi
-          echo "TargetVersion: $target_version"
-          echo "TargetVersion=$target_version" >> "$GITHUB_OUTPUT"
+
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "publish_latest=$publish_latest" >> "$GITHUB_OUTPUT"
+          echo "Image tag: $image_tag"
+          echo "Publish latest: $publish_latest"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -80,24 +130,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          target_version="${{ steps.getTargetVersion.outputs.TargetVersion }}"
+          image_tag="${{ steps.image.outputs.image_tag }}"
           tags_file="$(mktemp)"
           trap 'rm -f "$tags_file"' EXIT
 
-          echo "${GHCR_IMG_NAME}:${target_version}" >> "$tags_file"
+          echo "${GHCR_IMG_NAME}:${image_tag}" >> "$tags_file"
 
           dockerhub_enabled=false
           if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_PASSWORD" ]; then
             dockerhub_enabled=true
-            echo "${DOCKERHUB_USERNAME}/bili_tool_web:${target_version}" >> "$tags_file"
+            echo "${DOCKERHUB_USERNAME}/bili_tool_web:${image_tag}" >> "$tags_file"
           fi
 
-          publish_latest=false
-          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "release" ] || [ "${{ inputs.autoWithLatestTag }}" = "true" ]; then
-            publish_latest=true
-          fi
-
-          if [ "$publish_latest" = true ]; then
+          if [ "${{ steps.image.outputs.publish_latest }}" = "true" ]; then
             echo "${GHCR_IMG_NAME}:latest" >> "$tags_file"
             if [ "$dockerhub_enabled" = true ]; then
               echo "${DOCKERHUB_USERNAME}/bili_tool_web:latest" >> "$tags_file"
