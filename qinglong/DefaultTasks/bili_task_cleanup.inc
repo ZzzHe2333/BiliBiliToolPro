@@ -47,17 +47,24 @@ const retiredFiles = [
 ];
 
 const taskDefs = [
-  ['daily', /(?:zzz_)?bili_task_daily\.sh/i, ['bili每日任务', 'Zzz-Bili 每日任务']],
-  ['charge', /(?:zzz_)?bili_task_charge\.sh/i, ['bili免费B币券充电任务', 'Zzz-Bili 免费B币券充电任务']],
-  ['login', /(?:zzz_)?bili_task_login\.sh/i, ['bili扫码登录', 'Zzz-Bili 扫码登录']],
-  ['liveFansMedal', /(?:zzz_)?bili_task_liveFansMedal\.sh/i, ['bili直播粉丝牌', 'Zzz-Bili 直播粉丝牌']],
-  ['manga', /(?:zzz_)?bili_task_manga\.sh/i, ['bili漫画任务', 'Zzz-Bili 漫画任务']],
-  ['mangaPrivilege', /(?:zzz_)?bili_task_manga_privilege\.sh/i, ['bili领取大会员漫画权益任务', 'Zzz-Bili 领取大会员漫画权益任务']],
-  ['vipBigPoint', /(?:zzz_)?bili_task_vipBigPoint\.sh/i, ['bili大会员大积分', 'Zzz-Bili 大会员大积分']],
-  ['vipPrivilege', /(?:zzz_)?bili_task_vip_privilege\.sh/i, ['bili领取大会员福利任务', 'Zzz-Bili 领取大会员福利任务']],
-  ['test', /(?:zzz_)?bili_task_test\.sh/i, ['bili测试ck', 'Zzz-Bili 测试Cookie']],
-  ['tryFix', /bili_task_tryFix\.sh/i, ['bili尝试修复异常']],
+  ['daily', /zzz_bili_task_daily\.sh/i, ['Zzz-Bili 每日任务']],
+  ['charge', /zzz_bili_task_charge\.sh/i, ['Zzz-Bili 免费B币券充电任务']],
+  ['login', /zzz_bili_task_login\.sh/i, ['Zzz-Bili 扫码登录']],
+  ['liveFansMedal', /zzz_bili_task_liveFansMedal\.sh/i, ['Zzz-Bili 直播粉丝牌']],
+  ['manga', /zzz_bili_task_manga\.sh/i, ['Zzz-Bili 漫画任务']],
+  ['mangaPrivilege', /zzz_bili_task_manga_privilege\.sh/i, ['Zzz-Bili 领取大会员漫画权益任务']],
+  ['vipBigPoint', /zzz_bili_task_vipBigPoint\.sh/i, ['Zzz-Bili 大会员大积分']],
+  ['vipPrivilege', /zzz_bili_task_vip_privilege\.sh/i, ['Zzz-Bili 领取大会员福利任务']],
+  ['test', /zzz_bili_task_test\.sh/i, ['Zzz-Bili 测试Cookie']],
 ];
+
+function isLegacyDefaultTask(task) {
+  const command = String(task.command || '');
+  // 青龙可能保存为斜杠路径，也可能把路径扁平化为下划线；两种都兼容。
+  const belongsToFork = /ZzzHe2333[\/_-]BiliBiliToolPro/i.test(command);
+  const defaultTaskPath = /qinglong[\\/_-]DefaultTasks(?:[\\/_-]dev)?[\\/_-]bili(?:_dev)?_task_[^\s"'<>]*\.sh/i.test(command);
+  return belongsToFork && defaultTaskPath;
+}
 
 function logicalKey(task) {
   const command = String(task.command || '');
@@ -71,18 +78,14 @@ function logicalKey(task) {
 function isRetired(task) {
   const command = String(task.command || '');
   const name = String(task.name || '');
-  return retiredNames.has(name) || retiredFiles.some((pattern) => pattern.test(command));
+  return isLegacyDefaultTask(task)
+    || retiredNames.has(name)
+    || retiredFiles.some((pattern) => pattern.test(command));
 }
 
 function preference(task) {
-  const command = String(task.command || '');
-  const name = String(task.name || '');
   let score = 0;
-  // 正在执行的任务优先保留，避免清理器删除自身的青龙记录。
   if (Number(task.pid || 0) > 0) score += 1000;
-  // 同一逻辑任务同时存在旧版和 fork 包装时，默认保留 Zzz-Bili。
-  if (/zzz_bili_task_/i.test(command) || name.startsWith('Zzz-Bili ')) score += 100;
-  // 启用中的记录优先于已禁用的重复记录。
   if (Number(task.status || 0) === 0) score += 10;
   return score;
 }
@@ -97,11 +100,13 @@ function preference(task) {
     const id = Number(task.id);
     if (!Number.isInteger(id) || id <= 0) continue;
 
+    // 本 fork 的 DefaultTasks / DefaultTasks/dev 旧入口全部属于遗留任务，直接清理。
     if (isRetired(task)) {
       deleteIds.add(id);
       continue;
     }
 
+    // SubscriptionTasks 自身如果因为重复订阅生成多条，也只保留一条。
     const key = logicalKey(task);
     if (!key) continue;
     if (!groups.has(key)) groups.set(key, []);
@@ -134,7 +139,7 @@ function preference(task) {
     throw new Error(`deleteCrons 返回 code=${code}, message=${result?.message || ''}`);
   }
 
-  console.log(`[Zzz-Bili] 定时任务清理完成：删除 ${ids.length} 条废弃/重复任务`);
+  console.log(`[Zzz-Bili] 定时任务清理完成：删除 ${ids.length} 条 DefaultTasks 遗留/重复任务`);
   if (typeof api.close === 'function') api.close();
 })().catch((error) => {
   try {
