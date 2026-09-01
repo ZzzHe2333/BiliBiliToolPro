@@ -89,9 +89,10 @@ public class Program
                     );
                 }
 
-                //环境变量：
+                //环境变量：保留Ray_和无前缀兼容；本fork的Zzz_最后加载，优先级最高
                 configurationBuilder.AddEnvironmentVariables("Ray_");
                 configurationBuilder.AddEnvironmentVariables();
+                configurationBuilder.AddEnvironmentVariables("Zzz_");
 
                 //命令行：
                 if (args is { Length: > 0 })
