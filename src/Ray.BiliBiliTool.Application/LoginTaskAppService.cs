@@ -55,7 +55,16 @@ public class LoginTaskAppService(
         //更新cookie到青龙env
         if (platformType == PlatformType.QingLong)
         {
-            await loginDomainService.SaveCookieToQinLongAsync(ckInfo, cancellationToken);
+            bool saved = await loginDomainService.SaveCookieToQinLongAsync(
+                ckInfo,
+                cancellationToken
+            );
+            if (!saved)
+            {
+                throw new InvalidOperationException(
+                    "扫码登录成功，但Cookie未能持久化到青龙环境变量"
+                );
+            }
             return;
         }
 
