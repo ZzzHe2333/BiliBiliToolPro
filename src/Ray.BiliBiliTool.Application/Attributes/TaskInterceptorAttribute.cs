@@ -55,7 +55,8 @@ public class TaskInterceptorAttribute(
             taskName,
             context.Exception?.Message ?? ""
         );
-        context.HandledException(this, null);
+        // Rougamo 对 void 方法会忽略 returnValue；null! 仅表达这里有意传入空返回值。
+        context.HandledException(this, null!);
     }
 
     private string GetDelimiters()
