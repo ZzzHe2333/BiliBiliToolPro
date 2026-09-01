@@ -70,6 +70,7 @@ public class Program
             (hostBuilderContext, configurationBuilder) =>
             {
                 IHostEnvironment env = hostBuilderContext.HostingEnvironment;
+                bool zzzIsolatedMode = IsZzzIsolatedMode();
 
                 //json文件：
                 string envName = hostBuilderContext.HostingEnvironment.EnvironmentName;
@@ -89,10 +90,19 @@ public class Program
                     );
                 }
 
-                //环境变量：保留Ray_和无前缀兼容；本fork的Zzz_最后加载，优先级最高
-                configurationBuilder.AddEnvironmentVariables("Ray_");
-                configurationBuilder.AddEnvironmentVariables();
-                configurationBuilder.AddEnvironmentVariables("Zzz_");
+                if (zzzIsolatedMode)
+                {
+                    // 青龙订阅隔离模式：只读取本 fork 的 Zzz_* 配置，避免继承同面板中的
+                    // Ray_* 或无前缀业务配置（Cookie、推送、充电目标等）。
+                    configurationBuilder.AddEnvironmentVariables("Zzz_");
+                }
+                else
+                {
+                    // 普通模式保持历史兼容：Ray_、无前缀以及 Zzz_ 均可读取，Zzz_ 优先级最高。
+                    configurationBuilder.AddEnvironmentVariables("Ray_");
+                    configurationBuilder.AddEnvironmentVariables();
+                    configurationBuilder.AddEnvironmentVariables("Zzz_");
+                }
 
                 //命令行：
                 if (args is { Length: > 0 })
@@ -103,8 +113,11 @@ public class Program
                     );
                 }
 
-                //本地cookie存储文件
-                configurationBuilder.AddJsonFile("cookies.json", true, true);
+                // 青龙订阅隔离模式只使用 Zzz_BiliBiliCookies__*，不再加载可能残留的本地 cookies.json。
+                if (!zzzIsolatedMode)
+                {
+                    configurationBuilder.AddJsonFile("cookies.json", true, true);
+                }
             }
         );
 
@@ -127,6 +140,12 @@ public class Program
         );
 
         return hostBuilder;
+    }
+
+    private static bool IsZzzIsolatedMode()
+    {
+        string? value = Environment.GetEnvironmentVariable("Zzz_IsolatedMode");
+        return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) || value == "1";
     }
 
     /// <summary>
