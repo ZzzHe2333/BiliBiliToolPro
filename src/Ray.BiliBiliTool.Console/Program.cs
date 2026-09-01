@@ -22,6 +22,7 @@ public class Program
             Environment.Exit(0);
         };
 
+        WarnDeprecatedCommandLineOptions(args);
         PrintLogo();
 
         IHost host = CreateHost(args);
@@ -140,6 +141,24 @@ public class Program
         );
 
         return hostBuilder;
+    }
+
+    private static void WarnDeprecatedCommandLineOptions(string[] args)
+    {
+        var deprecatedOptions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["--dayOfAutoCharge"] = "已废弃。充电执行时间现在由任务 Cron 决定；青龙请直接修改“Zzz-Bili 免费B币券充电任务”的 Cron。",
+            ["--dayOfReceiveVipPrivilege"] = "已废弃。大会员福利领取时间现在由任务 Cron 决定；青龙请直接修改“Zzz-Bili 领取大会员福利任务”的 Cron。",
+        };
+
+        foreach (string arg in args)
+        {
+            string optionName = arg.Split('=', 2)[0];
+            if (deprecatedOptions.TryGetValue(optionName, out string? message))
+            {
+                System.Console.WriteLine($"bilitool: Warning: 命令行参数 {optionName} {message}");
+            }
+        }
     }
 
     private static bool IsZzzIsolatedMode()
