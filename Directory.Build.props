@@ -1,0 +1,16 @@
+<Project>
+  <!--
+    本 fork 的青龙订阅会设置 Zzz_IsolatedMode=true。
+    中国大陆环境默认同时使用华为云 NuGet 镜像和 nuget.org 官方源；
+    任一镜像临时不可用时，RestoreIgnoreFailedSources 允许从另一来源继续恢复。
+
+    如需关闭国内 NuGet 镜像：
+      Zzz_BILI_USE_CN_NUGET_MIRROR=false
+
+    普通开发、Web/Docker、GitHub Actions 没有 Zzz_IsolatedMode=true，因此不受此配置影响。
+  -->
+  <PropertyGroup Condition="'$(Zzz_IsolatedMode)' == 'true' and '$(Zzz_BILI_USE_CN_NUGET_MIRROR)' != 'false'">
+    <RestoreSources>https://repo.huaweicloud.com/repository/nuget/v3/index.json;https://api.nuget.org/v3/index.json</RestoreSources>
+    <RestoreIgnoreFailedSources>true</RestoreIgnoreFailedSources>
+  </PropertyGroup>
+</Project>
