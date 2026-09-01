@@ -35,7 +35,7 @@ public class DailyTaskOptions : BaseConfigOptions
     /// <summary>
     /// 达到六级后是否开始白嫖
     /// </summary>
-    public bool SaveCoinsWhenLv6 { get; set; } = false;
+    public bool SaveCoinsWhenLv6 { get; set; } = true;
 
     /// <summary>
     /// 投币时是否点赞[false,true]
