@@ -27,6 +27,115 @@ export BILI_MODE="${Zzz_BILI_MODE:-${BILI_MODE:-dotnet}}"
 export BILI_GITHUB_PROXY="${Zzz_BILI_GITHUB_PROXY:-${BILI_GITHUB_PROXY:-}}"
 export BILI_USE_CN_MIRROR="${Zzz_BILI_USE_CN_MIRROR:-${BILI_USE_CN_MIRROR:-true}}"
 
+# 同一个青龙容器中的 Zzz-Bili 任务共享同一套源码、obj/bin 和 B站账号配置。
+# 必须串行执行，否则多个 dotnet run 并发时会出现 PDB/程序集文件锁，也会同时请求 B站接口。
+zzz_lock_fd=""
+zzz_lock_dir=""
+zzz_lock_owned=false
+
+release_zzz_task_lock() {
+    if [ -n "${zzz_lock_fd:-}" ]; then
+        flock -u "$zzz_lock_fd" 2>/dev/null || true
+        eval "exec ${zzz_lock_fd}>&-" 2>/dev/null || true
+        zzz_lock_fd=""
+    fi
+
+    if [ "${zzz_lock_owned:-false}" = "true" ] && [ -n "${zzz_lock_dir:-}" ]; then
+        local owner_pid=""
+        if [ -r "$zzz_lock_dir/pid" ]; then
+            read -r owner_pid < "$zzz_lock_dir/pid" || true
+        fi
+        if [ -z "$owner_pid" ] || [ "$owner_pid" = "$$" ]; then
+            rm -rf "$zzz_lock_dir"
+        fi
+        zzz_lock_owned=false
+    fi
+}
+
+acquire_zzz_task_lock() {
+    local wait_seconds="${Zzz_BILI_LOCK_WAIT_SECONDS:-3600}"
+    local elapsed=0
+    local lock_file="/tmp/zzz-bilibili-tool.lock"
+
+    case "$wait_seconds" in
+        ''|*[!0-9]*)
+            echo "[Zzz-Bili] Zzz_BILI_LOCK_WAIT_SECONDS 非有效非负整数，使用默认 3600 秒" >&2
+            wait_seconds=3600
+            ;;
+    esac
+
+    # 优先使用 flock；大部分完整 Linux 环境都有。flock 会在进程退出时自动释放。
+    if command -v flock >/dev/null 2>&1; then
+        exec {zzz_lock_fd}>"$lock_file"
+        echo "[Zzz-Bili] 等待任务互斥锁，最长 ${wait_seconds} 秒..."
+        if flock -w "$wait_seconds" "$zzz_lock_fd"; then
+            echo "[Zzz-Bili] 已获得任务互斥锁"
+            return 0
+        fi
+
+        echo "[Zzz-Bili] 等待其他 Zzz-Bili 任务结束超时（${wait_seconds} 秒），本次不并发执行" >&2
+        eval "exec ${zzz_lock_fd}>&-" 2>/dev/null || true
+        zzz_lock_fd=""
+        return 75
+    fi
+
+    # Alpine/精简镜像如果没有 flock，使用原子 mkdir 作为兼容方案。
+    zzz_lock_dir="${lock_file}.d"
+    echo "[Zzz-Bili] 系统没有 flock，使用 mkdir 兼容锁；最长等待 ${wait_seconds} 秒"
+
+    while ! mkdir "$zzz_lock_dir" 2>/dev/null; do
+        local owner_pid=""
+        if [ -r "$zzz_lock_dir/pid" ]; then
+            read -r owner_pid < "$zzz_lock_dir/pid" || true
+        fi
+
+        # 上一次任务异常退出后自动清理失效锁。
+        if [ -n "$owner_pid" ]; then
+            case "$owner_pid" in
+                *[!0-9]*) owner_pid="" ;;
+            esac
+        fi
+        if [ -n "$owner_pid" ] && ! kill -0 "$owner_pid" 2>/dev/null; then
+            echo "[Zzz-Bili] 检测到失效任务锁（PID $owner_pid），自动清理"
+            rm -rf "$zzz_lock_dir"
+            continue
+        fi
+
+        # mkdir 成功到写 pid 之间只有极短窗口；若目录长期没有 pid，也按失效锁处理。
+        if [ -z "$owner_pid" ] && [ "$elapsed" -ge 10 ]; then
+            echo "[Zzz-Bili] 检测到无 PID 的失效任务锁，自动清理"
+            rm -rf "$zzz_lock_dir"
+            continue
+        fi
+
+        if [ "$elapsed" -ge "$wait_seconds" ]; then
+            echo "[Zzz-Bili] 等待其他 Zzz-Bili 任务结束超时（${wait_seconds} 秒），本次不并发执行" >&2
+            return 75
+        fi
+
+        if [ $((elapsed % 30)) -eq 0 ]; then
+            echo "[Zzz-Bili] 另一个 Zzz-Bili 任务仍在运行，已等待 ${elapsed} 秒..."
+        fi
+        sleep 5
+        elapsed=$((elapsed + 5))
+    done
+
+    printf '%s\n' "$$" > "$zzz_lock_dir/pid"
+    zzz_lock_owned=true
+    echo "[Zzz-Bili] 已获得任务互斥锁（兼容模式）"
+    return 0
+}
+
+if acquire_zzz_task_lock; then
+    trap 'release_zzz_task_lock' EXIT
+    trap 'release_zzz_task_lock; exit 130' INT
+    trap 'release_zzz_task_lock; exit 143' TERM
+else
+    lock_status=$?
+    exit "$lock_status"
+fi
+
+# 安装/检查运行环境也放在互斥锁内，避免首次运行时多个任务同时 apk/apt/dotnet 安装。
 . "$fork_repo_dir/qinglong/DefaultTasks/bili_task_base.sh"
 
 disable_bilitool_env_notifications() {
@@ -212,6 +321,10 @@ run_task() {
         task_status=${PIPESTATUS[0]}
     fi
     set -e
+
+    # 主程序结束后立即释放锁，通知发送不占用 BiliTool 的执行槽位。
+    release_zzz_task_lock
+    trap - EXIT INT TERM
 
     logical_status=$task_status
     if [ "$task_status" -eq 0 ] && grep -Eq '\[[^]]* (ERR|FTL)\]' "$log_file"; then
