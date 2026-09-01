@@ -1,6 +1,6 @@
 # 多账号 B 币券充电配置
 
-本分支为 `ChargeTaskConfig` 增加按 B 站账号 UID（登录后的 `UserInfo.Mid`）覆盖配置的能力。
+`ChargeTaskConfig` 支持按 B 站账号 UID（登录后的 `UserInfo.Mid`）覆盖充电配置。
 
 ## 配置优先级
 
@@ -10,9 +10,9 @@
 - `IsEnable` 未配置：继承全局 `ChargeTaskConfig:IsEnable`。
 - `AutoChargeUpId` 已配置且非空：使用账号级目标 UP UID。
 - `AutoChargeUpId` 未配置或为空：继承全局 `ChargeTaskConfig:AutoChargeUpId`。
-- 最终目标为空或为 `-1`：保持原项目行为，使用 `FallbackAutoChargeUpId`。
+- 最终目标为空或为 `-1`：使用 `FallbackAutoChargeUpId`，当前为 `18461303`。
 
-未配置 `Accounts` 时，与原版行为完全一致。
+未配置 `Accounts` 时，使用全局配置。
 
 ## Docker / Web 环境变量示例
 
@@ -43,12 +43,10 @@ environment:
 
 ## 默认关闭，只开放指定账号
 
-如果只希望少数账号自动充电，可以把全局设为关闭，再单独开启指定 UID：
-
 ```yaml
 environment:
   ChargeTaskConfig__IsEnable: "false"
-  ChargeTaskConfig__AutoChargeUpId: "888888"
+  ChargeTaskConfig__AutoChargeUpId: "18461303"
 
   ChargeTaskConfig__Accounts__222222__IsEnable: "true"
   ChargeTaskConfig__Accounts__222222__AutoChargeUpId: "999999"
@@ -58,14 +56,16 @@ environment:
 
 ## 青龙 / Console 示例
 
-Console / 青龙环境变量仍需添加 `Ray_` 前缀：
+本 fork 在青龙中推荐使用独立的 `Zzz_` 前缀：
 
 ```bash
-Ray_ChargeTaskConfig__IsEnable=false
-Ray_ChargeTaskConfig__AutoChargeUpId=888888
+Zzz_ChargeTaskConfig__IsEnable=false
+Zzz_ChargeTaskConfig__AutoChargeUpId=18461303
 
-Ray_ChargeTaskConfig__Accounts__222222__IsEnable=true
-Ray_ChargeTaskConfig__Accounts__222222__AutoChargeUpId=999999
+Zzz_ChargeTaskConfig__Accounts__222222__IsEnable=true
+Zzz_ChargeTaskConfig__Accounts__222222__AutoChargeUpId=999999
 ```
+
+程序仍兼容原来的 `Ray_` 和无前缀配置，但 `Zzz_` 在本 fork 中优先级最高。若与原版 `RayWangQvQ/BiliBiliToolPro` 共存在同一个青龙面板，请让原版使用 `Ray_*`，本 fork 使用 `Zzz_*`。
 
 账号键使用 B 站 UID，而不是 `BiliBiliCookies__1`、`BiliBiliCookies__2` 的序号，因此调整 Cookie 顺序不会导致配置对应错账号。
