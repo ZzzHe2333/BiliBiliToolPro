@@ -17,7 +17,7 @@ public static class Constants
     /// </summary>
     public static string SourceCodeUrl = "https://github.com/RayWangQvQ/BiliBiliToolPro";
 
-    public static string FallbackAutoChargeUpId = "220893216";
+    public static string FallbackAutoChargeUpId = "18461303";
 
     /// <summary>
     /// 每日任务exp
