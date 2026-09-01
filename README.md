@@ -258,3 +258,19 @@ BiliTool 实现自动完成任务的原理，是通过调用一系列开放的ap
 <p align="center">
     <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/ReSharper.svg" alt="ReSharper logo" width="200">
 </p>
+
+❤️Thanks to [YxVM](https://yxvm.com/aff.php?aff=668) & [NodeSeekDev](https://github.com/NodeSeekDev/NodeSupport) for sponsoring the server for testing support:
+
+<p align="center">
+    <a href="https://yxvm.com/aff.php?aff=668">
+        <img src="docs/imgs/node-support.png" alt="YxVm logo" width="200">
+    </a>
+</p>
+
+❤️Thanks to [DartNode](https://dartnode.com?aff=FriskyGopher833) for sponsoring the server for testing support:
+
+[![Powered by DartNode](https://dartnode.com/branding/DN-Open-Source-sm.png)](https://dartnode.com "Powered by DartNode - Free VPS for Open Source")
+
+❤️Thank you for your star to this project:
+
+[![Star History Chart](https://api.star-history.com/svg?repos=ZzzHe2333/BiliBiliToolPro&type=Date)](https://www.star-history.com/#ZzzHe2333/BiliBiliToolPro&Date)
