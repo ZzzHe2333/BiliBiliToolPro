@@ -78,7 +78,11 @@ function preference(task) {
   const command = String(task.command || '');
   const name = String(task.name || '');
   let score = 0;
+  // 正在执行的任务优先保留，避免清理器删除自身的青龙记录。
+  if (Number(task.pid || 0) > 0) score += 1000;
+  // 同一逻辑任务同时存在旧版和 fork 包装时，默认保留 Zzz-Bili。
   if (/zzz_bili_task_/i.test(command) || name.startsWith('Zzz-Bili ')) score += 100;
+  // 启用中的记录优先于已禁用的重复记录。
   if (Number(task.status || 0) === 0) score += 10;
   return score;
 }
