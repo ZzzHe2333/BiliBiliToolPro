@@ -15,6 +15,7 @@ bili_repo="ZzzHe2333/BiliBiliToolPro" # 仓库地址
 bili_branch=""                         # 分支名，空或_develop
 prefer_mode=${BILI_MODE:-"dotnet"}     # dotnet或bilitool，需要通过环境变量配置
 github_proxy=${BILI_GITHUB_PROXY:-""}  # 下载github release包时使用的代理，会拼在地址前面，需要通过环境变量配置
+use_cn_mirror=${BILI_USE_CN_MIRROR:-"true"} # 本fork主要面向中国大陆，默认使用国内包源
 export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 # 解决抽风问题
 
 # Use in the the functions: eval $invocation
@@ -54,8 +55,6 @@ say_err() {
 }
 
 say() {
-    # using stream 3 (defined in the beginning) to not interfere with stdout of functions
-    # which may be used as return value
     printf "%b\n" "${cyan:-}bilitool:${normal:-} $1" >&3
 }
 
@@ -73,7 +72,6 @@ MemoryWarn=${MemoryWarn:-""}
 DiskWarn=${DiskWarn:-""}
 
 dir_repo=${dir_repo:-"$QL_DIR/data/repo"}
-# 需要兼容老版本青龙，https://github.com/ZzzHe2333/BiliBiliToolPro/issues/728
 if [ ! -d "$dir_repo" ] && [ -d "$QL_DIR/repo" ]; then
   dir_repo="$QL_DIR/repo"
 fi
@@ -81,32 +79,26 @@ dir_shell=$QL_DIR/shell
 touch $dir_shell/env.sh && . $dir_shell/env.sh
 touch /root/.bashrc && . /root/.bashrc
 
-# 目录
 say "青龙repo目录: $dir_repo"
 qinglong_bili_repo="$(echo "$bili_repo" | sed 's/\//_/g')${bili_branch}"
 qinglong_bili_repo_dir="$(find $dir_repo -type d \( -iname $qinglong_bili_repo -o -iname ${qinglong_bili_repo}_main \) | head -1)"
 say "bili仓库目录: $qinglong_bili_repo_dir"
 
-current_linux_os="debian"  # 或alpine
-current_os="linux"         # 或linux-musl
-machine_architecture="x64" # 或arm、arm64
+current_linux_os="debian"
+current_os="linux"
+machine_architecture="x64"
 
 bilitool_installed_version=0
 
-# 以下操作仅在bilitool仓库的根bin文件下执行
 cd $qinglong_bili_repo_dir
 mkdir -p bin && cd $qinglong_bili_repo_dir/bin
 
-# 判断是否存在某指令
 machine_has() {
     eval $invocation
-
     command -v "$1" >/dev/null 2>&1
     return $?
 }
 
-# 判断系统架构
-# 输出：arm、arm64、x64
 get_machine_architecture() {
     eval $invocation
 
@@ -124,13 +116,10 @@ get_machine_architecture() {
         esac
     fi
 
-    # Always default to 'x64'
     echo "x64"
     return 0
 }
 
-# 获取linux系统名称
-# 输出：debian.10、debian.11、debian.12、ubuntu.20.04、ubuntu.22.04、alpine.3.4.3...
 get_linux_platform_name() {
     eval $invocation
 
@@ -150,15 +139,11 @@ get_linux_platform_name() {
     return 1
 }
 
-# 判断是否为musl（一般指alpine）
 is_musl_based_distro() {
     eval $invocation
-
     (ldd --version 2>&1 || true) | grep -q musl
 }
 
-# 获取当前系统名称
-# 输出：linux、linux-musl、osx、freebsd
 get_current_os_name() {
     eval $invocation
 
@@ -195,7 +180,38 @@ get_current_os_name() {
     return 1
 }
 
-# 检查操作系统
+configure_cn_package_mirror() {
+    if [[ "$use_cn_mirror" != "true" && "$use_cn_mirror" != "1" ]]; then
+        say "国内包源已关闭，保留系统原有软件源"
+        return 0
+    fi
+
+    say "启用中国大陆优先包源：mirrors.ustc.edu.cn"
+
+    if [ "$current_linux_os" = "debian" ]; then
+        local source_file
+        for source_file in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do
+            [ -f "$source_file" ] || continue
+            if [ ! -f "${source_file}.bak" ]; then
+                cp "$source_file" "${source_file}.bak"
+            fi
+            sed -i \
+                -e 's#https\?://deb.debian.org#https://mirrors.ustc.edu.cn#g' \
+                -e 's#https\?://security.debian.org#https://mirrors.ustc.edu.cn#g' \
+                "$source_file"
+        done
+    else
+        if [ -f /etc/apk/repositories ]; then
+            if [ ! -f /etc/apk/repositories.bak ]; then
+                cp /etc/apk/repositories /etc/apk/repositories.bak
+            fi
+            sed -i \
+                -e 's#https\?://dl-cdn.alpinelinux.org#https://mirrors.ustc.edu.cn#g' \
+                /etc/apk/repositories
+        fi
+    fi
+}
+
 check_os() {
     eval $invocation
 
@@ -206,7 +222,8 @@ check_os() {
     say "当前架构：$machine_architecture"
 
     if [ "$current_os" = "linux" ]; then
-        current_linux_os="debian" # 当前青龙只有debian和aplpine两种
+        current_linux_os="debian"
+        configure_cn_package_mirror
         if ! machine_has curl; then
             say "curl未安装，开始安装依赖..."
             apt-get update
@@ -214,6 +231,7 @@ check_os() {
         fi
     else
         current_linux_os="alpine"
+        configure_cn_package_mirror
         if ! machine_has curl; then
             say "curl未安装，开始安装依赖..."
             apk update
@@ -224,7 +242,6 @@ check_os() {
     say "当前选择的运行方式：$prefer_mode"
 }
 
-# 检查安装jq
 check_jq() {
     if [ "$current_linux_os" = "debian" ]; then
         if ! machine_has jq; then
@@ -241,7 +258,6 @@ check_jq() {
     fi
 }
 
-# 检查安装unzip
 check_unzip() {
     if [ "$current_linux_os" = "debian" ]; then
         if ! machine_has unzip; then
@@ -251,14 +267,13 @@ check_unzip() {
         fi
     else
         if ! machine_has unzip; then
-            say "jq未安装，开始安装依赖..."
+            say "unzip未安装，开始安装依赖..."
             apk update
             apk add -y unzip
         fi
     fi
 }
 
-# 检查dotnet
 check_dotnet() {
     eval $invocation
 
@@ -274,7 +289,6 @@ check_dotnet() {
     fi
 }
 
-# 检查bilitool
 check_bilitool() {
     eval $invocation
 
@@ -282,7 +296,6 @@ check_bilitool() {
     touch $TAG_FILE
     local STORED_TAG=$(cat $TAG_FILE 2>/dev/null)
 
-    #如果STORED_TAG为空，则返回1
     if [[ -z $STORED_TAG ]]; then
         say "tag.txt为空，未安装过"
         return 1
@@ -290,7 +303,6 @@ check_bilitool() {
 
     say "tag.txt记录的版本：$STORED_TAG"
 
-    # 查找当前目录下是否有叫Ray.BiliBiliTool.Console的文件
     if [ -f "./Ray.BiliBiliTool.Console" ]; then
         say "bilitool已安装"
         bilitool_installed_version=$STORED_TAG
@@ -301,7 +313,6 @@ check_bilitool() {
     fi
 }
 
-# 检查环境
 check_installed() {
     eval $invocation
 
@@ -318,7 +329,6 @@ check_installed() {
     return 1
 }
 
-# 使用官方脚本安装dotnet
 install_dotnet_by_script() {
     eval $invocation
 
@@ -334,7 +344,6 @@ install_dotnet_by_script() {
     . $exportFile
 }
 
-# 安装dotnet环境
 install_dotnet() {
     eval $invocation
 
@@ -342,17 +351,9 @@ install_dotnet() {
     say "当前系统：$current_linux_os"
     if [[ $current_linux_os == "debian" ]]; then
         say "使用apt安装"
-
-        if ! (curl -s -m 5 www.google.com >/dev/nul); then
-            say "机器位于墙内，切换为包源为国内镜像源"
-            cp /etc/apt/sources.list /etc/apt/sources.list.bak
-            sed -i 's/https:\/\/deb.debian.org/https:\/\/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
-            sed -i 's/http:\/\/deb.debian.org/https:\/\/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
-            apt-get update
-        fi
         {
             . /etc/os-release
-            curl -o packages-microsoft-prod.deb https://packages.microsoft.com/config/debian/$VERSION_ID/packages-microsoft-prod.deb
+            curl -fL --retry 3 --connect-timeout 10 -o packages-microsoft-prod.deb https://packages.microsoft.com/config/debian/$VERSION_ID/packages-microsoft-prod.deb
             dpkg -i packages-microsoft-prod.deb
             rm packages-microsoft-prod.deb
             apt-get update && apt-get install -y dotnet-sdk-8.0
@@ -361,15 +362,9 @@ install_dotnet() {
         }
     else
         say "使用apk安装"
-        if ! (curl -s -m 5 www.google.com >/dev/nul); then
-            say "机器位于墙内，切换为包源为国内镜像源"
-            cp /etc/apk/repositories /etc/apk/repositories.bak
-            sed -i 's/https:\/\/dl-cdn.alpinelinux.org/https:\/\/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-            sed -i 's/http:\/\/dl-cdn.alpinelinux.org/https:\/\/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-            apk update
-        fi
         {
-            apk add dotnet8-sdk # https://pkgs.alpinelinux.org/packages
+            apk update
+            apk add dotnet8-sdk
         } || {
             install_dotnet_by_script
         }
@@ -378,7 +373,6 @@ install_dotnet() {
     return $?
 }
 
-# 从github获取bilitool下载地址
 get_download_url() {
     eval $invocation
 
@@ -389,42 +383,32 @@ get_download_url() {
     return 0
 }
 
-# 安装bilitool
 install_bilitool() {
     eval $invocation
 
     say "开始安装bilitool"
-    # 获取最新的release信息
     LATEST_RELEASE=$(curl -s https://api.github.com/repos/$bili_repo/releases/latest)
 
-    # 解析最新的tag名称
     check_jq
     LATEST_TAG=$(echo $LATEST_RELEASE | jq -r '.tag_name')
     say "最新版本：$LATEST_TAG"
 
-    # 读取之前存储的tag并比较
     if [ "$LATEST_TAG" != "$bilitool_installed_version" ]; then
-        # 如果不一样，则需要更新安装
         ASSET_URL=$(get_download_url $LATEST_TAG)
-
-        # 使用curl下载文件到当前目录下的test.zip文件
         local zip_file_name="bilitool-$LATEST_TAG.zip"
         curl -L -o "$zip_file_name" $ASSET_URL
 
-        # 解压
         check_unzip
         unzip -jo "$zip_file_name" -d ./ &&
             rm "$zip_file_name" &&
             rm -f appsettings.*
 
-        # 更新tag.txt文件
         echo $LATEST_TAG >./tag.txt
     else
         say "已经是最新版本，无需下载。"
     fi
 }
 
-## 安装dotnet（如果未安装过）
 install() {
     eval $invocation
 
@@ -436,20 +420,19 @@ install() {
             install_dotnet || {
                 say_err "安装失败"
                 say_err "请根据文档自行在青龙容器中安装dotnet：https://learn.microsoft.com/zh-cn/dotnet/core/install/linux-$current_linux_os"
-                say_err "或者尝试切换运行模式为bilitool，它不需要安装dotnet：https://github.com/ZzzHe2333/BiliBiliToolPro/blob/develop/qinglong/README.md"
+                say_err "或者尝试切换运行模式为bilitool，它不需要安装dotnet：https://github.com/ZzzHe2333/BiliBiliToolPro/blob/main/qinglong/README.md"
             }
         fi
 
         if [ "$prefer_mode" == "bilitool" ]; then
             install_bilitool || {
                 say_err "安装失败，请检查日志并重试"
-                say_err "或者尝试切换运行模式为dotnet：https://github.com/ZzzHe2333/BiliBiliToolPro/blob/develop/qinglong/README.md"
+                say_err "或者尝试切换运行模式为dotnet：https://github.com/ZzzHe2333/BiliBiliToolPro/blob/main/qinglong/README.md"
             }
         fi
     fi
 }
 
-# 运行bilitool任务
 run_task() {
     eval $invocation
 
