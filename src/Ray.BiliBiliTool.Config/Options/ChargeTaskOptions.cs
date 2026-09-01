@@ -5,9 +5,10 @@ public class ChargeTaskOptions : BaseConfigOptions
     public override string SectionName => "ChargeTaskConfig";
 
     /// <summary>
-    /// 默认充电Up主Id
+    /// 默认充电Up主Id。未提供配置时使用fork统一兜底账号。
     /// </summary>
-    public string? AutoChargeUpId { get; set; }
+    public string? AutoChargeUpId { get; set; } =
+        Ray.BiliBiliTool.Config.Constants.FallbackAutoChargeUpId;
 
     /// <summary>
     /// 按B站账号Uid覆盖充电配置。
