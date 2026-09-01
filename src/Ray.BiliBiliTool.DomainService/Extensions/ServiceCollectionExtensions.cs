@@ -7,6 +7,12 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddDomainServices(this IServiceCollection services)
     {
+        services.AddHttpClient("Hitokoto", client =>
+        {
+            client.BaseAddress = new Uri("https://v1.hitokoto.cn/");
+            client.Timeout = TimeSpan.FromSeconds(5);
+        });
+
         services.Scan(scan =>
             scan.FromAssemblyOf<IAccountDomainService>()
                 .AddClasses(classes => classes.AssignableTo<IDomainService>())
