@@ -11,7 +11,7 @@ public class TaskInfo
     [Obsolete(
         "The sign result comes from combine API is not correct, use IVipBigPointApi.GetThreeDaySignAsync instead."
     )]
-    public required SingTaskItem Sing_task_item { get; set; }
+    public SingTaskItem Sing_task_item { get; set; } = new();
 }
 
 public class SingTaskItem
