@@ -10,10 +10,10 @@
     <PackageReference Include="Ray.Infrastructure" />
     <!--
       Ray.Infrastructure 0.0.26 传递依赖 Rougamo.Fody >= 5.0.1。
-      Rougamo 5.x 附带的编译期 Analyzer 使用了比 .NET 8 SDK 更高版本的 Roslyn，
-      在青龙 Alpine/.NET 8 上会产生 CS9057。Fody 编织本身不属于 analyzers 资产，
-      因此仅排除 Analyzer，保留 Rougamo/Fody 的运行和编织依赖。
+      本项目只消费已经编译好的 Ray.Infrastructure，不需要再次运行 Rougamo/Fody 编织；
+      同时 Rougamo 5.x Analyzer 所需 Roslyn 高于 .NET 8 SDK。
+      因此保留包的 compile/runtime 依赖，只排除 analyzers 与 build/buildTransitive 资产。
     -->
-    <PackageReference Include="Rougamo.Fody" ExcludeAssets="analyzers" PrivateAssets="all" />
+    <PackageReference Include="Rougamo.Fody" ExcludeAssets="analyzers;build;buildTransitive" PrivateAssets="all" />
   </ItemGroup>
 </Project>
