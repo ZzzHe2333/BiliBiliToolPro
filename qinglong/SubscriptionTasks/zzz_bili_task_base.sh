@@ -57,6 +57,7 @@ send_qinglong_notification() {
     node - "$target_code" "$log_file" "$task_status" <<'NODE'
 const fs = require('fs');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const targetCode = process.argv[2] || 'Task';
 const logFile = process.argv[3];
@@ -98,29 +99,48 @@ function prepareContent() {
   return content;
 }
 
-async function trySystemNotify(content) {
+function trySystemNotify(content) {
   const clientPath = path.join(qlDir, 'shell/preload/client.js');
   if (!fs.existsSync(clientPath)) {
     console.warn(`[Zzz-Bili] 青龙 systemNotify 客户端不存在：${clientPath}`);
     return false;
   }
 
-  try {
-    const api = require(clientPath);
-    const result = await api.systemNotify({ title, content });
-    if (typeof api.close === 'function') api.close();
+  // 独立子进程调用青龙 client.js。这样即使 client.js 初始化时直接 process.exit，
+  // 主通知进程仍能继续执行环境变量兜底。
+  const childCode = `
+const fs = require('fs');
+(async () => {
+  const payload = JSON.parse(fs.readFileSync(0, 'utf8'));
+  const api = require(${JSON.stringify(clientPath)});
+  const result = await api.systemNotify(payload);
+  if (typeof api.close === 'function') api.close();
+  process.stdout.write(JSON.stringify(result || {}));
+  process.exit(Number(result?.code) === 200 ? 0 : 2);
+})().catch((error) => {
+  console.error(error?.message || String(error));
+  process.exit(1);
+});`;
 
-    if (Number(result?.code) === 200) {
-      console.log('[Zzz-Bili] 已使用青龙面板系统通知发送结果');
-      return true;
-    }
+  const result = spawnSync(process.execPath, ['-e', childCode], {
+    input: JSON.stringify({ title, content }),
+    encoding: 'utf8',
+    timeout: 35000,
+    env: process.env,
+  });
 
-    console.warn(`[Zzz-Bili] 青龙面板系统通知失败：code=${result?.code ?? 'unknown'}, message=${result?.message ?? ''}`);
-    return false;
-  } catch (error) {
-    console.warn(`[Zzz-Bili] 青龙面板系统通知不可用：${error.message}`);
-    return false;
+  if (result.status === 0) {
+    console.log('[Zzz-Bili] 已使用青龙面板系统通知发送结果');
+    return true;
   }
+
+  let detail = (result.stdout || result.stderr || '').trim();
+  try {
+    const response = JSON.parse(result.stdout || '{}');
+    detail = `code=${response.code ?? 'unknown'}, message=${response.message ?? ''}`;
+  } catch (_) {}
+  console.warn(`[Zzz-Bili] 青龙面板系统通知失败：${detail || `exit=${result.status ?? 'unknown'}`}`);
+  return false;
 }
 
 async function tryEnvNotify(content) {
@@ -154,7 +174,7 @@ async function tryEnvNotify(content) {
 
 (async () => {
   const content = prepareContent();
-  if (await trySystemNotify(content)) return;
+  if (trySystemNotify(content)) return;
   await tryEnvNotify(content);
 })().catch((error) => {
   console.warn(`[Zzz-Bili] 通知处理异常：${error.message}`);
