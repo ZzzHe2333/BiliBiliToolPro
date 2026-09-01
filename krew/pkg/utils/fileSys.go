@@ -6,7 +6,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/RayWangQvQ/BiliBiliToolPro/krew/pkg/resources"
+	"github.com/ZzzHe2333/BiliBiliToolPro/krew/pkg/resources"
 	"sigs.k8s.io/kustomize/kyaml/filesys"
 )
 

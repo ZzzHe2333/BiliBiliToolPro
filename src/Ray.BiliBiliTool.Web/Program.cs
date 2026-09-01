@@ -55,7 +55,7 @@ try
                 Contact = new OpenApiContact
                 {
                     Name = "BiliBiliToolPro",
-                    Url = new Uri("https://github.com/RayWangQvQ/BiliBiliToolPro"),
+                    Url = new Uri("https://github.com/ZzzHe2333/BiliBiliToolPro"),
                 },
             }
         );
