@@ -30,10 +30,11 @@ install_docker_if_needed() {
     fi
 
     log "未检测到 Docker，尝试使用 get.docker.com 安装"
-    local installer="$(mktemp)"
-    trap 'rm -f "$installer"' RETURN
+    local installer
+    installer="$(mktemp)"
     download "https://get.docker.com" "$installer"
     sh "$installer"
+    rm -f "$installer"
 }
 
 prepare_files() {

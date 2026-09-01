@@ -24,11 +24,13 @@ TENCENT_SERVERLESS_YML
 IS_AUTO_DEPLOY_TENCENT_SCF
 ```
 
-- `TENCENT_SERVERLESS_YML`：完整的自定义 `serverless.yml` 内容；不设置时使用仓库中的默认文件。
+- `TENCENT_SERVERLESS_YML`：完整的自定义 `serverless.yml` 内容；不设置时使用仓库中的默认模板。
 - `IS_AUTO_DEPLOY_TENCENT_SCF=true`：允许定时自动部署当前仓库代码。
 - 也可以在 Actions 中手动运行 `auto-deploy-tencent-scf`。
 
 自动部署只部署**当前仓库**，不会先同步或覆盖为其他仓库代码。
+
+仓库默认 `serverless.yml` 为安全模板：触发器默认 `enable: false`，且不包含真实 Cookie。正式部署前请使用 `TENCENT_SERVERLESS_YML` 或腾讯云控制台补全自己的配置并启用所需触发器。
 
 ## 2. 环境变量
 
@@ -43,18 +45,16 @@ environment:
 
 真实 Cookie、Token、Secret 不要提交到 Git 仓库。推荐通过云端 Secret / 环境变量安全注入。
 
-更多配置见：
+更多配置见 `../docs/configuration.md`。
 
-```text
-../docs/configuration.md
-```
+## 3. 默认触发器模板
 
-## 3. 默认触发器
-
-当前示例 `serverless.yml` 只默认创建：
+当前示例只保留：
 
 - `DailyTask` -> `Daily`
 - `VipBigPointTask` -> `VipBigPoint`
+
+两者默认均为关闭状态，配置完成后再启用。
 
 本项目默认关闭的功能不会出现在 SCF 默认触发器中：
 

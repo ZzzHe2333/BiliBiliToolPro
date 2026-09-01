@@ -15,10 +15,8 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# Web 容器使用无前缀配置键。
+# Web 容器使用无前缀配置键。Cookie 可通过 values 覆盖或部署后扫码添加。
 env:
-  - name: BiliBiliCookies__1
-    value: ""
   - name: DailyTaskConfig__Cron
     value: "0 0 15 * * ?"
 

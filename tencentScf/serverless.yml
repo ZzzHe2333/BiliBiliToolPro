@@ -21,14 +21,16 @@ inputs:
         parameters:
           name: DailyTask
           cronExpression: "0 30 12 * * * *"
-          enable: true
+          enable: false
           argument: Daily
     - timer:
         parameters:
           name: VipBigPointTask
           cronExpression: "0 07 01 * * * *"
-          enable: true
+          enable: false
           argument: VipBigPoint
   environment:
-    variables:
-      Zzz_BiliBiliCookies__1: "" # cookie，必填；建议通过云端安全配置注入真实值
+    variables: {}
+    # 配置示例（不要把真实 Cookie 提交到仓库）：
+    # variables:
+    #   Zzz_BiliBiliCookies__1: "<COOKIE>"

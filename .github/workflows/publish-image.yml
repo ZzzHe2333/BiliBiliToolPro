@@ -11,6 +11,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Dockerfile'
+      - 'docker/**'
+      - 'src/**'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
+      - 'common.props'
+      - '.github/workflows/publish-image.yml'
   release:
     types: [created]
 
