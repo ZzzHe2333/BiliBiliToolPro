@@ -7,24 +7,38 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   tag:
     name: add tag
+    if: ${{ github.event.pull_request.merged == true }}
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout merged main
         uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Get current version
         id: current_version
         run: |
           version=$(grep -oP '(?<=<Version>).*?(?=<\/Version>)' ./common.props)
-          echo "Curent version: $version"
-          echo "current_version=$version" >> $GITHUB_OUTPUT
+          echo "Current version: $version"
+          echo "current_version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Tag and push
+      - name: Create version tag if missing
         run: |
+          set -euo pipefail
           new_tag="${{ steps.current_version.outputs.current_version }}"
-          git tag -f "$new_tag"
-          git push -f origin "$new_tag"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$new_tag" >/dev/null 2>&1; then
+            echo "Tag $new_tag 已存在，不移动已有版本 tag"
+            exit 0
+          fi
+
+          git tag "$new_tag"
+          git push origin "$new_tag"
