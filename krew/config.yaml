@@ -1,2 +1,0 @@
-- name: DailyTaskConfig__Cron
-  value: "0 0 15 * * ?"

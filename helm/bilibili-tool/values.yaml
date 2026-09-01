@@ -1,10 +1,5 @@
-# Default values for bilibili-tool.
-
 namespace: default
 replicaCount: 1
-
-configmap:
-  name: entry
 
 image:
   repository: ghcr.io/zzzhe2333/bili_tool_web
@@ -15,29 +10,36 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# Web 容器使用无前缀配置键。Cookie 可通过 values 覆盖或部署后扫码添加。
+service:
+  type: ClusterIP
+  port: 8080
+
+# Web 项目使用标准无前缀配置键。
 env:
+  - name: TZ
+    value: "Asia/Shanghai"
   - name: DailyTaskConfig__Cron
     value: "0 0 15 * * ?"
 
-volumes:
-  log:
-    enabled: true
-    path: "/tmp/logs"
-    name: "bili-tool-vol"
-  login:
-    enabled: true
-    name: "entry"
+# 默认不使用 hostPath，适合先快速部署。
+# 如需跨 Pod 重建保留日志或 Web 配置，可开启并提供宿主机绝对路径。
+persistence:
+  logs:
+    enabled: false
+    hostPath: ""
+  config:
+    enabled: false
+    hostPath: ""
 
 podAnnotations: {}
 
 resources:
   limits:
-    cpu: 100m
-    memory: 120Mi
+    cpu: 500m
+    memory: 512Mi
   requests:
     cpu: 100m
-    memory: 120Mi
+    memory: 128Mi
 
 nodeSelector: {}
 tolerations: []
