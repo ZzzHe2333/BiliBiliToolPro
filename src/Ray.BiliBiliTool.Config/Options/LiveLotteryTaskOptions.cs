@@ -2,6 +2,11 @@
 
 public class LiveLotteryTaskOptions : BaseConfigOptions
 {
+    public LiveLotteryTaskOptions()
+    {
+        IsEnable = false;
+    }
+
     public override string SectionName => "LiveLotteryTaskConfig";
 
     public string? IncludeAwardNames { get; set; }
