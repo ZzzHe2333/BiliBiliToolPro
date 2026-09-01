@@ -93,8 +93,25 @@ public class Program
 
                 if (zzzIsolatedMode)
                 {
-                    // 青龙订阅隔离模式：只读取本 fork 的 Zzz_* 配置，避免继承同面板中的
-                    // Ray_* 或无前缀业务配置（Cookie、推送、充电目标等）。
+                    // 青龙订阅隔离模式：只读取本 fork 的 Zzz_* 业务配置，避免继承同面板中的
+                    // Ray_* 或无前缀配置（Cookie、推送、充电目标等）。
+                    // 旧版 DefaultTasks 仍会设置 Ray_RunTasks / Ray_PlatformType，因此仅把这两个
+                    // 无敏感业务数据的控制字段作为兼容别名导入，保证旧入口不会重新串用 Ray_* 配置。
+                    var legacyControlValues = new Dictionary<string, string?>();
+                    string? legacyRunTasks = Environment.GetEnvironmentVariable("Ray_RunTasks");
+                    string? legacyPlatformType = Environment.GetEnvironmentVariable("Ray_PlatformType");
+
+                    if (!string.IsNullOrWhiteSpace(legacyRunTasks))
+                    {
+                        legacyControlValues["RunTasks"] = legacyRunTasks;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(legacyPlatformType))
+                    {
+                        legacyControlValues["PlatformType"] = legacyPlatformType;
+                    }
+
+                    configurationBuilder.AddInMemoryCollection(legacyControlValues);
                     configurationBuilder.AddEnvironmentVariables("Zzz_");
                 }
                 else
@@ -164,7 +181,19 @@ public class Program
     private static bool IsZzzIsolatedMode()
     {
         string? value = Environment.GetEnvironmentVariable("Zzz_IsolatedMode");
-        return string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) || value == "1";
+        if (string.Equals(value, "true", StringComparison.OrdinalIgnoreCase) || value == "1")
+        {
+            return true;
+        }
+
+        // fork 中历史 DefaultTasks 会通过 Ray_PlatformType=QingLong 启动。
+        // 将其自动视为隔离模式，但仅在配置阶段兼容两个控制字段，不读取其他 Ray_* 业务配置。
+        string? legacyPlatformType = Environment.GetEnvironmentVariable("Ray_PlatformType");
+        return string.Equals(
+            legacyPlatformType,
+            "QingLong",
+            StringComparison.OrdinalIgnoreCase
+        );
     }
 
     /// <summary>
