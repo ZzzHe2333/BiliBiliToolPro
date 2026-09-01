@@ -30,6 +30,8 @@ public class LoginDomainService(
     IOptions<QingLongOptions> qingLongOptions
 ) : ILoginDomainService
 {
+    private const string QingLongCookieEnvPrefix = "Zzz_BiliBiliCookies__";
+
     public async Task<BiliCookie> LoginByQrCodeAsync(CancellationToken cancellationToken)
     {
         BiliCookie? cookieInfo = null;
@@ -240,7 +242,7 @@ public class LoginDomainService(
                 throw new Exception("获取青龙token失败");
             }
 
-            var qlEnvList = await qingLongApi.GetEnvsAsync("Ray_BiliBiliCookies__", token);
+            var qlEnvList = await qingLongApi.GetEnvsAsync(QingLongCookieEnvPrefix, token);
             if (qlEnvList.Code != 200)
             {
                 throw new Exception($"查询环境变量失败：{qlEnvList.ToJsonStr()}");
@@ -250,7 +252,7 @@ public class LoginDomainService(
             logger.LogDebug(ckInfo.ToString());
 
             var list = qlEnvList
-                .Data.Where(x => x.name.StartsWith("Ray_BiliBiliCookies__"))
+                .Data.Where(x => x.name.StartsWith(QingLongCookieEnvPrefix))
                 .ToList();
             var oldEnv = list.FirstOrDefault(x => x.value.Contains(ckInfo.UserId));
 
@@ -280,14 +282,14 @@ public class LoginDomainService(
             {
                 maxNum = list.Select(x =>
                     {
-                        var num = x.name.Replace("Ray_BiliBiliCookies__", "");
+                        var num = x.name.Replace(QingLongCookieEnvPrefix, "");
                         var parseSuc = int.TryParse(num, out int envNum);
                         return parseSuc ? envNum : 0;
                     })
                     .Max();
             }
 
-            var name = $"Ray_BiliBiliCookies__{maxNum + 1}";
+            var name = $"{QingLongCookieEnvPrefix}{maxNum + 1}";
             logger.LogInformation("Key：{key}", name);
 
             var add = new AddQingLongEnv
@@ -431,10 +433,10 @@ public class LoginDomainService(
     private Task PrintIfSaveCookieFailAsync(BiliCookie ckInfo, CancellationToken cancellationToken)
     {
         logger.LogError("持久化失败，青龙版本高于2.18，请手动添加环境变量到青龙");
-        logger.LogWarning("变量Key：{key}", "Ray_BiliBiliCookies__0");
+        logger.LogWarning("变量Key：{key}", $"{QingLongCookieEnvPrefix}0");
         logger.LogWarning("变量值：{value}", ckInfo.CookieStr);
         logger.LogWarning(
-            "如果Key已存在，请自行+1，如Ray_BiliBiliCookies__1，Ray_BiliBiliCookies__2..."
+            $"如果Key已存在，请自行+1，如{QingLongCookieEnvPrefix}1，{QingLongCookieEnvPrefix}2..."
         );
         return Task.CompletedTask;
     }
