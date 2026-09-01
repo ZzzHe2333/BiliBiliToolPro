@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ZzzHe2333/BiliBiliToolPro 青龙订阅专用公共脚本。
-# 本文件没有 cron/new Env 元数据，不会在订阅后生成独立定时任务。
+# 本文件是 .inc 内部依赖，不会在订阅后生成独立定时任务。
 
 set -e
 set -u
@@ -135,8 +135,9 @@ else
     exit "$lock_status"
 fi
 
-# 安装/检查运行环境也放在互斥锁内，避免首次运行时多个任务同时 apk/apt/dotnet 安装。
-. "$fork_repo_dir/qinglong/DefaultTasks/bili_task_base.sh"
+# 先清理本仓库废弃/重复定时任务，再安装/检查运行环境。
+. "$fork_repo_dir/qinglong/DefaultTasks/bili_task_cleanup.inc"
+. "$fork_repo_dir/qinglong/DefaultTasks/bili_task_base.inc"
 
 disable_bilitool_env_notifications() {
     local env_name
