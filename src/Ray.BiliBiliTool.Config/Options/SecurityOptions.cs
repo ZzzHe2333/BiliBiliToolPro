@@ -13,7 +13,7 @@ public class SecurityOptions
     /// <summary>
     /// 随机睡眠的最大时长，用于使每天运行时间在范围内相对随机
     /// </summary>
-    public int RandomSleepMaxMin { get; set; } = 10;
+    public int RandomSleepMaxMin { get; set; } = 30;
 
     /// <summary>
     /// 两次调用api之间间隔的秒数[0,+]
