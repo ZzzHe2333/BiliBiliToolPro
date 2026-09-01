@@ -1,209 +1,273 @@
 # 在青龙中运行
 
-原理是，利用青龙的拉库命令，拉取本仓库源码，自动添加cron定时任务，然后在青龙容器中安装`dotnet`环境或`bilitool`的二进制包，定时运行相应的Task。
+本 fork 支持通过青龙面板的 **订阅管理** 直接拉取，无需手动创建 `ql repo` 定时任务。
 
-开始前，请先确保你的青龙面板是运行正常的。
+仓库地址：
 
-<!-- TOC depthFrom:2 -->
-
-- [1. 步骤](#1-步骤)
-    - [1.1. 登录青龙面板并修改配置](#11-登录青龙面板并修改配置)
-    - [1.2. 在青龙面板中添加拉库定时任务](#12-在青龙面板中添加拉库定时任务)
-        - [1.2.1. 方式一：订阅管理](#121-方式一订阅管理)
-        - [1.2.2. 方式二：定时任务拉库](#122-方式二定时任务拉库)
-    - [1.3. 检查定时任务](#13-检查定时任务)
-    - [1.4. 配置青龙Client Secret（可选）](#14-配置青龙client-secret可选)
-        - [1.4.1. 新建 Application](#141-新建-application)
-        - [1.4.2. 密钥配置到环境变量](#142-密钥配置到环境变量)
-    - [1.5. Bili登录](#15-bili登录)
-- [2. 先行版](#2-先行版)
-- [3. GitHub加速](#3-github加速)
-- [4. 常见问题](#4-常见问题)
-    - [4.1. 安装dotnet失败怎么办法](#41-安装dotnet失败怎么办法)
-    - [4.2. Couldn't find a valid ICU package installed on the system](#42-couldnt-find-a-valid-icu-package-installed-on-the-system)
-    - [4.3. 提示文件不存在或路径异常，怎么排查](#43-提示文件不存在或路径异常怎么排查)
-    - [4.4. The configured user limit (128) on the number of inotify instances has been reached](#44-the-configured-user-limit-128-on-the-number-of-inotify-instances-has-been-reached)
-
-<!-- /TOC -->
-
-## 1. 步骤
-
-### 1.1. 登录青龙面板并修改配置
-青龙面板，`配置文件`页。
-
-修改 `RepoFileExtensions="js py"` 为 `RepoFileExtensions="js py sh"`
-
-保存配置。
-
-### 1.2. 在青龙面板中添加拉库定时任务
-
-两种方式，任选其一即可：
-
-#### 1.2.1. 方式一：订阅管理
-
+```text
+https://github.com/ZzzHe2333/BiliBiliToolPro.git
 ```
-名称：Bilibili
+
+为避免与 `RayWangQvQ/BiliBiliToolPro` 在同一个青龙面板中冲突，本 fork 提供独立的 `Zzz-Bili` 订阅任务，并优先读取 `Zzz_` 前缀环境变量。
+
+## 1. 订阅管理直接部署
+
+### 1.1. 确认 Shell 文件可被订阅
+
+如果你的青龙版本仍使用 `RepoFileExtensions` 配置，请在青龙面板 `配置文件` 中确保包含 `sh`，例如：
+
+```bash
+RepoFileExtensions="js py sh"
+```
+
+新版青龙如果在订阅管理中已经有“文件后缀”字段，直接填写 `sh` 即可。
+
+### 1.2. 新建订阅
+
+进入：
+
+```text
+青龙面板 -> 订阅管理 -> 新建订阅
+```
+
+填写：
+
+```text
+名称：Zzz-BiliBiliToolPro
 类型：公开仓库
 链接：https://github.com/ZzzHe2333/BiliBiliToolPro.git
+分支：main
 定时类型：crontab
 定时规则：2 2 28 * *
-白名单：bili_task_.+\.sh
+白名单：zzz_bili_task_.+\.sh
 文件后缀：sh
 ```
 
-没提到的不要动。
+其余项目留空即可，**不需要再创建 `ql repo` 命令**。
 
-保存后，点击运行按钮，运行拉库。
+保存后点击该订阅的“运行/立即执行”。青龙会拉取仓库，并根据脚本头部的 cron 自动建立 `Zzz-Bili ...` 定时任务。
 
-#### 1.2.2. 方式二：定时任务拉库
-青龙面板，`定时任务`页，右上角`添加任务`，填入以下信息：
+订阅专用任务位于：
 
-```
-名称：拉取Bili库
-命令：ql repo https://github.com/ZzzHe2333/BiliBiliToolPro.git "bili_task_"
-定时规则：2 2 28 * *
+```text
+qinglong/SubscriptionTasks/
 ```
 
-点击确定。
+当前会创建：
 
-保存成功后，找到该定时任务，点击运行按钮，运行拉库。
+- `Zzz-Bili 每日任务`
+- `Zzz-Bili 免费B币券充电任务`
+- `Zzz-Bili 扫码登录`
+- `Zzz-Bili 直播粉丝牌`
+- `Zzz-Bili 天选时刻`
+- `Zzz-Bili 漫画任务`
+- `Zzz-Bili 领取大会员漫画权益任务`
+- `Zzz-Bili 银瓜子兑换硬币任务`
+- `Zzz-Bili 批量取关主播`
+- `Zzz-Bili 大会员大积分`
+- `Zzz-Bili 领取大会员福利任务`
 
-### 1.3. 检查定时任务
+`zzz_bili_task_base.sh` 也会随订阅拉取，但它没有 cron/new Env 元数据，因此不会生成独立定时任务。
 
-如果正常，拉库成功后，会自动添加bilibili相关的task任务。
+## 2. 与原版在同一个青龙面板共存
 
-![qinglong-tasks.png](../docs/imgs/qinglong-tasks.png)
+原版建议继续使用：
 
-### 1.4. 配置青龙Client Secret（可选）
-
-扫码登录Bili后，需要有权限向青龙的环境变量中持久化Cookie，所以需要添加一个鉴权。
-
-青龙官方说明：https://qinglong.online/api/preparation
-
-#### 1.4.1. 新建 Application
-
-青龙 -> 系统设置 -> 应用设置，点击新建。
-
-![qinglong-application](../docs/imgs/qinglong-application.png)
-
-#### 1.4.2. 密钥配置到环境变量
-
-将上面2个值添加到环境变量中即可。
-
-Name分别为：
-
-- Ray_QingLongConfig__ClientId
-- Ray_QingLongConfig__ClientSecret
-
-![qinglong-app-env](../docs/imgs/qinglong-application-key.png)
-
-
-### 1.5. Bili登录
-
-在青龙定时任务中，点击运行`bili扫码登录`任务，查看运行日志，扫描日志中的二维码进行登录。
-![qinglong-login.png](../docs/imgs/qinglong-login.png)
-
-登录成功后，如果已配置了上述的Application，会将cookie保存到青龙的环境变量中：
-
-![qinglong-env.png](../docs/imgs/qinglong-env.png)
-
-如果未配置Application，会打印出cookie，请手动自己到环境变量中添加。
-
-首次运行会自动安装环境，时间可能长一点，之后就不需要重复安装了。
-
-## 2. 先行版
-
-青龙拉库时可以指定分支，develop分支的代码会超前于默认的main分支，包含当前正在开发的新功能。
-
-想提前体验新功能，或想要Bug能快速得到解决的朋友，可以尝试切换先行版，但同时也意味着稳定性会相应降低（其实可以忽略不计~🤨）。
-
-```
-分支：develop
-白名单：bili_dev_task_.+\.sh
+```text
+Ray_*
 ```
 
-其他选项同上。
+本 fork 建议使用：
 
-## 3. GitHub加速
-
-拉库时，如果服务器在国内，访问GitHub速度慢，可在仓库地址前加上加速代理进行加速。
-
-如：
-
+```text
+Zzz_*
 ```
-https://github.moeyy.xyz/https://github.com/ZzzHe2333/BiliBiliToolPro.git
-https://gh-proxy.com/https://github.com/ZzzHe2333/BiliBiliToolPro.git
+
+例如：
+
+```bash
+Zzz_BiliBiliCookies__1=<COOKIE>
+Zzz_ChargeTaskConfig__IsEnable=true
+Zzz_ChargeTaskConfig__AutoChargeUpId=18461303
+Zzz_ChargeTaskConfig__ChargeComment=""
+```
+
+程序仍兼容旧的 `Ray_` 和无前缀环境变量，但 `Zzz_` 最后加载，因此本 fork 中 `Zzz_` 的值优先级更高。
+
+同一青龙面板中推荐：
+
+```text
+原版 RayWangQvQ/BiliBiliToolPro -> Ray_*
+本 fork ZzzHe2333/BiliBiliToolPro -> Zzz_*
+```
+
+这样 Cookie、充电目标、推送参数以及绝大多数业务配置可以分别维护。
+
+## 3. 配置青龙 ClientId / ClientSecret（可选）
+
+如果希望扫码登录成功后自动将 Cookie 写回青龙环境变量，需要在：
+
+```text
+青龙 -> 系统设置 -> 应用设置
+```
+
+创建 Application，然后在环境变量中添加：
+
+```text
+Zzz_QingLongConfig__ClientId
+Zzz_QingLongConfig__ClientSecret
+```
+
+本 fork 扫码登录后的 Cookie 会保存为：
+
+```text
+Zzz_BiliBiliCookies__0
+Zzz_BiliBiliCookies__1
+Zzz_BiliBiliCookies__2
 ...
 ```
 
-加速代理地址通常不能保证长期稳定，请自行查找使用。
-## 4. 常见问题
+不会去更新原版使用的 `Ray_BiliBiliCookies__*`。
 
-### 4.1. 安装dotnet失败怎么办法
+如果没有配置 Application，程序会在日志中提示需要手动添加的 `Zzz_BiliBiliCookies__*` 变量。
 
-首先，青龙有两个版本的镜像：
+## 4. Bili 登录
 
-- alpine：whyour/qinglong:latest
-- debian：whyour/qinglong:debian
+订阅运行完成后，在青龙“定时任务”中找到：
 
-安装dotnet失败的情况，几乎全发生在alpine版上。。。
-
-所以，如果你“执迷不悟”，就是一定要用alpine版，那请先通过日志自行排查，不行就根据微软官方文档，进入qinglong容器后，手动安装。
-
-如果还不行，那么可以切换到基于`bilitool`的二进制包运行方式，该方式不需要安装`dotnet`，方式：
-
-编辑青龙面板的`配置文件`，新增如下两行：
-
-```
-export BILI_MODE="bilitool" # bili运行模式，dotnet或bilitool
-export BILI_GITHUB_PROXY="https://github.moeyy.xyz/" # 下载二进制包时使用的加速代理，不要的话则置空
+```text
+Zzz-Bili 扫码登录
 ```
 
-![qinglong-login.png](../docs/imgs/qinglong-run-as-bilitool.png)
+点击运行，根据日志扫描二维码即可。
 
-bilitool没有先行版的概念，因为只有main分支才会打包，更新会稍慢一点。
+首次执行任务时会自动检查/安装运行环境，可能比后续执行耗时更长。
 
-另外，alpine版的问题，我不建议来提交issue，因为已经大大超出本项目的scope了，建议可以去给alpine官方或微软的dotnet官方提交issue。
+## 5. 充电配置
 
-### 4.2. Couldn't find a valid ICU package installed on the system
+全局充电目标：
 
-如 #266 ，需要在青龙面板的环境变量添加如下环境变量：
-
-```
-名称：DOTNET_SYSTEM_GLOBALIZATION_INVARIANT
-值：1
+```bash
+Zzz_ChargeTaskConfig__IsEnable=true
+Zzz_ChargeTaskConfig__AutoChargeUpId=18461303
 ```
 
-### 4.3. 提示文件不存在或路径异常，怎么排查
+按 B 站 UID 单独配置：
 
-需要`docker exec -it qinglong bash`后，查看几个常用路径：
-
-```
-/ql
-    /data
-        /repo
-    /scripts
-    /shell
+```bash
+Zzz_ChargeTaskConfig__Accounts__<B站UID>__IsEnable=true
+Zzz_ChargeTaskConfig__Accounts__<B站UID>__AutoChargeUpId=18461303
 ```
 
-- `/ql/dada/repo`目录下存储了拉库后，bilitool的源代码
-- `/ql/scripts`目录下存储了bilitool的定时运行脚本
-- `/ql/shell`目录下是青龙的基础脚本
+未设置充电目标、目标为空或目标为 `-1` 时，本 fork 最终兜底 UID 为：
 
-请cd到相应目录，查看该目录下文件是否存在，状态是否正常。
-
-### 4.4. The configured user limit (128) on the number of inotify instances has been reached
-
-报错：
-
-```
-Asp.Net Core - The configured user limit (128) on the number of inotify instances has been reached
+```text
+18461303
 ```
 
-可以尝试添加如下环境变量解决：
+`Zzz_ChargeTaskConfig__ChargeComment` 留空时，会优先从一言 API 获取留言；请求失败时回退到程序内置随机留言。
 
+## 6. 订阅中的任务时间
+
+订阅脚本当前默认 cron：
+
+| 任务 | Cron |
+| --- | --- |
+| 每日任务 | `0 9 * * *` |
+| 免费 B 币券充电 | `0 12 * * *` |
+| 直播粉丝牌 | `5 0 * * *` |
+| 天选时刻 | `0 13 * * *` |
+| 漫画任务 | `0 14 * * *` |
+| 漫画权益 | `0 15 * * *` |
+| 银瓜子兑换硬币 | `0 8 * * *` |
+| 批量取关 | `0 12 1 * *` |
+| 大会员大积分 | `7 1 * * *` |
+| 大会员福利 | `0 1 * * *` |
+| 扫码登录 | `0 0 1 1 *` |
+
+青龙最终执行时间以面板中对应定时任务的 Cron 为准，可以直接在面板中修改。
+
+## 7. fork 专用运行模式变量
+
+如果需要让本 fork 和原版使用不同运行模式，可使用：
+
+```bash
+Zzz_BILI_MODE=dotnet
 ```
+
+可选值：
+
+```text
+dotnet
+bilitool
+```
+
+GitHub Release 下载代理可单独配置：
+
+```bash
+Zzz_BILI_GITHUB_PROXY=""
+```
+
+未设置 `Zzz_BILI_MODE` / `Zzz_BILI_GITHUB_PROXY` 时，会兼容读取原来的 `BILI_MODE` / `BILI_GITHUB_PROXY`。
+
+## 8. GitHub 加速
+
+如果青龙所在服务器访问 GitHub 较慢，可以使用你自己信任的 GitHub 代理。代理服务可用性经常变化，不建议在项目中写死第三方代理地址。
+
+## 9. 常见问题
+
+### 9.1. 订阅成功但没有生成任务
+
+检查：
+
+1. “文件后缀”是否填写 `sh`；
+2. 白名单是否为：
+
+```text
+zzz_bili_task_.+\.sh
+```
+
+3. 订阅日志中是否拉到了 `qinglong/SubscriptionTasks/` 下的脚本；
+4. 青龙是否允许解析 Shell 脚本中的 cron 注释。
+
+### 9.2. 与原版环境变量串了
+
+本 fork 不要再新建 `Ray_BiliBiliCookies__*`，改用：
+
+```text
+Zzz_BiliBiliCookies__*
+```
+
+其他配置同理优先使用 `Zzz_`。
+
+### 9.3. 安装 dotnet 失败
+
+可以改用：
+
+```bash
+Zzz_BILI_MODE=bilitool
+```
+
+如果使用 `dotnet` 模式，则需要青龙容器能够正常安装/运行 .NET 8。
+
+### 9.4. Couldn't find a valid ICU package installed on the system
+
+在青龙环境变量中添加：
+
+```text
+DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+```
+
+### 9.5. inotify instances reached
+
+如果出现：
+
+```text
+The configured user limit (128) on the number of inotify instances has been reached
+```
+
+可以添加：
+
+```text
 DOTNET_USE_POLLING_FILE_WATCHER=1
 ```
-
-添加后，对配置变更事件的监听，会从监听 Linux 系统的 inotify 事件，变成定时轮询。
