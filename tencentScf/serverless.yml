@@ -1,10 +1,7 @@
-# https://github.com/serverless-components/tencent-scf/blob/master/docs/configure.md
-
-#组件信息
+# Tencent SCF sample for ZzzHe2333/BiliBiliToolPro
 component: scf
 name: bilibili_tool
 
-#组件参数配置
 inputs:
   name: ${name}_scf
   namespace: default
@@ -12,38 +9,26 @@ inputs:
   src: ./bin/publish/
   handler: index.main_handler
   runtime: CustomRuntime
-  region: ap-guangzhou # 函数所在区域，默认广州
-  description: This is a function in ${app} application.
+  region: ap-guangzhou
+  description: BiliBiliToolPro scheduled tasks
   memorySize: 128
   initTimeout: 30
   timeout: 86400
   asyncRunEnable: true
   traceEnable: true
-  events: # 根据自己的需要修改
-    - timer: # 每日任务触发器
+  events:
+    - timer:
         parameters:
           name: DailyTask
           cronExpression: "0 30 12 * * * *"
           enable: true
           argument: Daily
-    - timer: # 天选抽奖触发器
-        parameters:
-          name: LiveLotteryTask
-          cronExpression: "0 0 */4 * * * *"
-          enable: true
-          argument: LiveLottery
-    - timer: # 自动取关
-        parameters:
-          name: UnfollowBatchedTask
-          cronExpression: "0 0 0 * * MON *"
-          enable: true
-          argument: UnfollowBatched
-    - timer: # 大会员积分
+    - timer:
         parameters:
           name: VipBigPointTask
           cronExpression: "0 07 01 * * * *"
           enable: true
           argument: VipBigPoint
   environment:
-    variables: # 根据自己的需要修改
-      Ray_BiliBiliCookies__1: 123 # cookie，必填
+    variables:
+      Zzz_BiliBiliCookies__1: "" # cookie，必填；建议通过云端安全配置注入真实值

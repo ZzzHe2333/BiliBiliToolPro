@@ -12,15 +12,13 @@ spec:
         app: bilibilipro
     spec:
       containers:
-      - name: bilibilipro
-        image: zai7lou/bilibili_tool_pro:2.0.1
-        imagePullPolicy: IfNotPresent
-        resources:
-          requests:
-            cpu: 80m
-            memory: 100M
-          limits:
-            cpu: 100m
-            memory: 120M
-            
-  
+        - name: bilibilipro
+          image: ghcr.io/zzzhe2333/bili_tool_web:latest
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 80m
+              memory: 100Mi
+            limits:
+              cpu: 100m
+              memory: 120Mi

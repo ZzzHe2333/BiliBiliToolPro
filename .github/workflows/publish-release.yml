@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: write
-  discussions: write
 
 jobs:
   build:
@@ -30,7 +29,7 @@ jobs:
 
       - name: Read Version
         id: version
-        run: echo "version=$(cat ./src/Ray.BiliBiliTool.Console/bin/Publish/version.txt)" >> $GITHUB_OUTPUT
+        run: echo "version=$(cat ./src/Ray.BiliBiliTool.Console/bin/Publish/version.txt)" >> "$GITHUB_OUTPUT"
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -40,6 +39,5 @@ jobs:
           name: "BiliBiliToolPro-V${{ steps.version.outputs.version }}"
           tag_name: ${{ steps.version.outputs.version }}
           body_path: './src/Ray.BiliBiliTool.Console/bin/Publish/release_notes.md'
-          discussion_category_name: Announcements
           generate_release_notes: true
           fail_on_unmatched_files: true

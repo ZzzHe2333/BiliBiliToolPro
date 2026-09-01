@@ -2,70 +2,54 @@
 
 ## Prerequisites
 
-- Kubernetes >= v1.23.0.
-- go >= v1.18
-- kubectl installed on your local machine, configured to an existing healthy Kubernetes cluster.
-- [krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) plugin installed
+- Kubernetes >= v1.23
+- Go >= v1.18（仅构建插件时需要）
+- kubectl
+- krew（如需通过 krew 管理插件）
 
-## Install Plugin
+## 构建 / 安装插件
 
-Command: `cd ./krew && make deploy`
-The binary will be generated in cmd/ install it alonside the kubectl binary.
+```bash
+cd krew
+make deploy
+```
 
-For example: the kubectl is installed under `/usr/bin`, then put the bilibilipro plugin under `/usr/bin` too.
+将生成的 `bilibilipro` 插件放到 `PATH` 中即可。
 
-## Plugin Commands
+## Deployment
 
-### Deployment && Update
+```bash
+kubectl bilipro init --config config.yaml
+```
 
-Prerequsites: please make sure you have the right permission to at least manage namespaces/deployments
+可选参数：
 
-Command: `kubectl bilipro init --config config.yaml`
+```text
+--image=ghcr.io/zzzhe2333/bili_tool_web:latest
+--namespace=bilipro
+--image-pull-secret=<secret>
+--login
+```
 
-Creates Deployment with the needed environments.
+配置文件使用 Web 项目的无前缀环境变量：
 
-Optional Options:
+```yaml
+- name: BiliBiliCookies__1
+  value: "<COOKIE>"
+- name: DailyTaskConfig__Cron
+  value: "0 0 15 * * ?"
+```
 
-- `--image=zai7lou/bilibili_tool_pro:2.0.1`
-- `--namespace=bilipro`
-- `--image-pull-secret=<docker secrets>`
-- `--login` to scan QR code to login
+本仓库不再使用其他账号下的历史容器镜像。
 
-Required Options:
+## Delete
 
-- `--config=<config.yaml>`
+```bash
+kubectl bilipro delete --namespace=bilipro
+```
 
-The content of <config.yaml> is a yaml array, please refer to the example config yaml under the krew directory.
+## Version
 
-For example
-
-````yaml
-- name: Ray_BiliBiliCookies__2
-  value: "cookie"
-  # DailyTrigger - required
-- name: Ray_DailyTaskConfig__Cron
-  value: "11 11 * * *"
-````
-
-Suggestions: Deploy this workload in namespace other than default or kube-* namespace, because the delete logic should be improved
-
-### Deletion
-
-Command: `kubectl bilipro delete [options]`
-
-Deletes Deployment.
-v
-Optional Options:
-
-- `--namespace=<deploy-namespace>`
-- `--name=<deploy-name>`
-
-### Version
-
-Command: `kubectl bilipro version`
-
-Output the plugin version.
-
-## Package
-
-Pls refer to [installation](https://krew.sigs.k8s.io/docs), you can package your own krew plugin
+```bash
+kubectl bilipro version
+```

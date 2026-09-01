@@ -1,6 +1,6 @@
 services:
   bili_tool_web:
-    image: ghcr.io/raywangqvq/bili_tool_web
+    image: ${BILI_TOOL_IMAGE:-ghcr.io/zzzhe2333/bili_tool_web:latest}
     container_name: bili_tool_web
     restart: unless-stopped
     tty: true

@@ -8,6 +8,9 @@ on:
         required: true
         default: true
         type: boolean
+  push:
+    branches:
+      - main
   release:
     types: [created]
 
@@ -24,8 +27,8 @@ env:
 
 jobs:
   PublishImage:
-    # fork-main 是青龙 bilitool 的滚动二进制预发布，不应触发正式容器镜像发布。
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.release.tag_name != 'fork-main' }}
+    # fork-main 是青龙 bilitool 的滚动二进制预发布，不应触发 Web 容器镜像发布。
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.release.tag_name != 'fork-main' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -82,7 +85,7 @@ jobs:
           fi
 
           publish_latest=false
-          if [ "${{ github.event_name }}" = "release" ] || [ "${{ inputs.autoWithLatestTag }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "release" ] || [ "${{ inputs.autoWithLatestTag }}" = "true" ]; then
             publish_latest=true
           fi
 
