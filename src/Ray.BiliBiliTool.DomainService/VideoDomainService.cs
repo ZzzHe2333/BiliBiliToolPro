@@ -43,9 +43,22 @@ public class VideoDomainService(
     public async Task<RankingInfo> GetRandomVideoOfRanking()
     {
         var apiResponse = await videoWithoutCookieApi.GetRegionRankingVideosV2();
+
+        if (apiResponse.Code != 0)
+        {
+            throw new BiliApiBusinessException(apiResponse.Code, apiResponse.Message);
+        }
+
+        if (apiResponse.Data?.List is not { Count: > 0 } rankingList)
+        {
+            throw new BiliApiBusinessException(
+                apiResponse.Code,
+                "排行榜接口返回成功，但data/list为空"
+            );
+        }
+
         logger.LogDebug("获取排行榜成功");
-        var data = apiResponse.Data.List[new Random().Next(apiResponse.Data.List.Count)];
-        return data;
+        return rankingList[Random.Shared.Next(rankingList.Count)];
     }
 
     public async Task<UpVideoInfo?> GetRandomVideoOfUp(long upId, int total, BiliCookie ck)
@@ -77,6 +90,7 @@ public class VideoDomainService(
     /// 获取UP主的视频总数量
     /// </summary>
     /// <param name="upId"></param>
+    /// <param name="ck"></param>
     /// <returns></returns>
     public async Task<int> GetVideoCountOfUp(long upId, BiliCookie ck)
     {

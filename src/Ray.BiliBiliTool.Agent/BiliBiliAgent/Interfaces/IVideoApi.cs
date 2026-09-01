@@ -124,12 +124,12 @@ public interface IVideoWithoutCookieApi : IVideoApi
     Task<BiliApiResponse<List<RankingInfo>>> GetRegionRankingVideos(int rid, int day);
 
     /// <summary>
-    /// 获取排行榜
+    /// 获取排行榜。B站风控/业务错误响应可能不包含data字段。
     /// </summary>
     /// <returns></returns>
     [Header("Referer", "https://www.bilibili.com/")]
     [Header("Origin", "https://www.bilibili.com")]
     [Header("dnt", "1")]
     [HttpGet("/x/web-interface/ranking/v2?rid=0&type=all")]
-    Task<BiliApiResponse<Ranking>> GetRegionRankingVideosV2();
+    Task<BiliApiResponseOptionalData<Ranking>> GetRegionRankingVideosV2();
 }
