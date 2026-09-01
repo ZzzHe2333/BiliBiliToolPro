@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# cron:0 0 1 1 *
-# new Env("bili_base")
+# ZzzHe2333/BiliBiliToolPro 青龙内部公共库；不要作为独立定时任务订阅。
 
 set -e
 set -u
