@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/RayWangQvQ/BiliBiliToolPro/krew/pkg/cmd"
-	helper "github.com/RayWangQvQ/BiliBiliToolPro/krew/pkg/utils"
+	"github.com/ZzzHe2333/BiliBiliToolPro/krew/pkg/cmd"
+	helper "github.com/ZzzHe2333/BiliBiliToolPro/krew/pkg/utils"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
