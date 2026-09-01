@@ -20,18 +20,15 @@ if [ -z "$fork_repo_dir" ]; then
   exit 1
 fi
 
-# 开启 fork 专用严格隔离模式：Console 只读取 Zzz_* 业务配置。
 export Zzz_IsolatedMode=true
 
-# fork 可单独设置运行模式/下载代理；未设置时兼容原 BILI_* 变量。
+# fork 专用运行/网络选项。
 export BILI_MODE="${Zzz_BILI_MODE:-${BILI_MODE:-dotnet}}"
 export BILI_GITHUB_PROXY="${Zzz_BILI_GITHUB_PROXY:-${BILI_GITHUB_PROXY:-}}"
+export BILI_USE_CN_MIRROR="${Zzz_BILI_USE_CN_MIRROR:-${BILI_USE_CN_MIRROR:-true}}"
 
-# 复用项目已有安装、架构检测和运行环境逻辑。
 . "$fork_repo_dir/qinglong/DefaultTasks/bili_task_base.sh"
 
-# 订阅任务统一由青龙负责通知，因此执行 BiliTool 时移除 Zzz_ Serilog 的 WriteTo 环境覆盖，
-# 避免面板系统通知成功后又被 Server酱/PushPlus/Webhook 等重复推送。
 disable_bilitool_env_notifications() {
     local env_name
     while IFS='=' read -r env_name _; do
@@ -41,9 +38,6 @@ disable_bilitool_env_notifications() {
     done < <(env)
 }
 
-# 通知优先级：
-# 1. 青龙面板“系统设置 -> 通知设置”（gRPC systemNotify）
-# 2. 如果 systemNotify 不可用或发送失败，回退到青龙 sendNotify.js 环境变量通知
 send_qinglong_notification() {
     local target_code=$1
     local log_file=$2
@@ -193,7 +187,6 @@ async function tryEnvNotify(content) {
 NODE
 }
 
-# 覆盖原 run_task：只写 Zzz_* 运行变量，避免同一青龙里的原版 Ray_* 配置冲突。
 run_task() {
     local target_code=$1
     local log_file
