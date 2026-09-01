@@ -27,7 +27,7 @@ apt-get install curl
 ## 2. 方式一：一键脚本(推荐)
 
 ```
-bash <(curl -sSL https://raw.githubusercontent.com/RayWangQvQ/BiliBiliToolPro/main/docker/install.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/ZzzHe2333/BiliBiliToolPro/main/docker/install.sh)
 ```
 
 ## 3. 方式二：手动 Docker Compose
@@ -39,10 +39,10 @@ bash <(curl -sSL https://raw.githubusercontent.com/RayWangQvQ/BiliBiliToolPro/ma
 mkdir bili_tool_web && cd bili_tool_web
 
 # 下载
-wget https://raw.githubusercontent.com/RayWangQvQ/BiliBiliToolPro/main/docker/sample/docker-compose.yml
+wget https://raw.githubusercontent.com/ZzzHe2333/BiliBiliToolPro/main/docker/sample/docker-compose.yml
 mkdir -p config
 cd ./config
-wget https://raw.githubusercontent.com/RayWangQvQ/BiliBiliToolPro/main/docker/sample/config/cookies.json
+wget https://raw.githubusercontent.com/ZzzHe2333/BiliBiliToolPro/main/docker/sample/config/cookies.json
 cd ..
 
 # 启动
@@ -104,7 +104,7 @@ docker logs -f bili_tool_web
 
 其中，`cookie`需要替换为自己真实的cookie字符串
 
-### 4.2. 其他指令参考
+### 4.2. 其他命令参考
 
 ```
 # 启动容器
@@ -152,7 +152,7 @@ docker run --rm \
 目前我提供和维护的镜像：
 
 - DockerHub: `[zai7lou/bili_tool_web](https://hub.docker.com/repository/docker/zai7lou/bili_tool_web)`
-- GitHub: `[bili_tool_web](https://github.com/RayWangQvQ/BiliBiliToolPro/pkgs/container/bili_tool_web)`
+- GitHub: `[bili_tool_web](https://github.com/ZzzHe2333/BiliBiliToolPro/pkgs/container/bili_tool_web)`
 
 如果有需要（大部分都不需要），可以使用源码自己构建镜像，如下：
 
