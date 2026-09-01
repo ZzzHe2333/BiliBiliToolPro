@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Ray.BiliBiliTool.Agent;
 using Ray.BiliBiliTool.Agent.BiliBiliAgent.Dtos;
@@ -16,9 +17,12 @@ public class ChargeDomainService(
     IOptionsMonitor<DailyTaskOptions> dailyTaskOptions,
     IOptionsMonitor<ChargeTaskOptions> chargeTaskOptions,
     IDailyTaskApi dailyTaskApi,
-    IChargeApi chargeApi
+    IChargeApi chargeApi,
+    IHttpClientFactory httpClientFactory
 ) : IChargeDomainService
 {
+    private const string HitokotoClientName = "Hitokoto";
+
     private readonly DailyTaskOptions _dailyTaskOptions = dailyTaskOptions.CurrentValue;
     private readonly ChargeTaskOptions _chargeTaskOptions = chargeTaskOptions.CurrentValue;
     private readonly IDailyTaskApi _dailyTaskApi = dailyTaskApi;
@@ -91,15 +95,52 @@ public class ChargeDomainService(
     }
 
     /// <summary>
-    /// 充电后留言
+    /// 充电后留言。
+    /// 显式配置ChargeComment时优先使用配置值；否则请求一言API，失败后使用内置随机留言。
     /// </summary>
-    /// <param name="token"></param>
     public async Task ChargeComments(string orderNum, BiliCookie ck)
     {
-        var comment = _chargeTaskOptions.ChargeComment ?? "";
+        string comment = await GetChargeCommentAsync();
         var request = new ChargeCommentRequest(orderNum, comment, ck.BiliJct);
         await chargeApi.ChargeCommentAsync(request, ck.ToString());
 
         logger.LogInformation("【留言】{comment}", comment);
+    }
+
+    private async Task<string> GetChargeCommentAsync()
+    {
+        if (_chargeTaskOptions.HasCustomChargeComment)
+        {
+            logger.LogDebug("使用配置的充电留言");
+            return _chargeTaskOptions.CustomChargeComment!;
+        }
+
+        try
+        {
+            HttpClient client = httpClientFactory.CreateClient(HitokotoClientName);
+            using HttpResponseMessage response = await client.GetAsync("?c=a");
+            response.EnsureSuccessStatusCode();
+
+            await using Stream stream = await response.Content.ReadAsStreamAsync();
+            using JsonDocument document = await JsonDocument.ParseAsync(stream);
+
+            if (document.RootElement.TryGetProperty("hitokoto", out JsonElement hitokotoElement))
+            {
+                string? hitokoto = hitokotoElement.GetString()?.Trim();
+                if (!string.IsNullOrWhiteSpace(hitokoto))
+                {
+                    logger.LogDebug("从一言API获取充电留言成功");
+                    return hitokoto;
+                }
+            }
+
+            logger.LogWarning("一言API未返回有效hitokoto字段，使用内置随机留言");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("一言API获取失败，使用内置随机留言：{message}", ex.Message);
+        }
+
+        return _chargeTaskOptions.GetRandomDefaultComment();
     }
 }
