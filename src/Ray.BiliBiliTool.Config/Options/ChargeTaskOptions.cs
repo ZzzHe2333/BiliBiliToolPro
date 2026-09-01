@@ -45,15 +45,31 @@ public class ChargeTaskOptions : BaseConfigOptions
     private string? _chargeComment;
 
     /// <summary>
-    /// 充电后留言
+    /// 充电后留言。显式配置时使用配置值；未配置时该属性保持原有行为，返回内置随机留言。
+    /// 实际自动充电流程会优先尝试从一言 API 获取留言，失败后调用内置随机留言。
     /// </summary>
     public string ChargeComment
     {
-        get =>
-            string.IsNullOrWhiteSpace(_chargeComment)
-                ? DefaultComments[new Random().Next(0, DefaultComments.Count)]
-                : _chargeComment;
+        get => HasCustomChargeComment ? _chargeComment! : GetRandomDefaultComment();
         set => _chargeComment = value;
+    }
+
+    /// <summary>
+    /// 是否显式配置了充电留言。
+    /// </summary>
+    public bool HasCustomChargeComment => !string.IsNullOrWhiteSpace(_chargeComment);
+
+    /// <summary>
+    /// 获取显式配置的充电留言；未配置时为 null/空值。
+    /// </summary>
+    public string? CustomChargeComment => _chargeComment;
+
+    /// <summary>
+    /// 从内置列表随机获取一条充电留言。
+    /// </summary>
+    public string GetRandomDefaultComment()
+    {
+        return DefaultComments[Random.Shared.Next(DefaultComments.Count)];
     }
 
     private static readonly List<string> DefaultComments =
