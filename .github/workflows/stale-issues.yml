@@ -1,7 +1,7 @@
 name: Close Stale Issues
 on:
   schedule:
-    - cron: "0 8 * * *" # 每天的 00:00 运行
+    - cron: "0 16 * * *" # UTC 16:00 = 北京时间次日 00:00
   workflow_dispatch:
 
 permissions:
@@ -16,10 +16,10 @@ jobs:
       - name: Close Stale Issues
         uses: actions/stale@v11
         with:
-          days-before-stale: 3 # 3 天不活跃后标记Stale
-          days-before-close: 3 # 标记Stale后3天不活跃则关闭问题
-          stale-issue-label: "Stale" # 标记为 "Stale" 的问题
-          stale-issue-message: "🕸️ This has been inactive for 3 days, please confirm if it still needs attention~~" # Comment added
-          close-issue-message: "🚫 This has been inactive for too long and is now closed, feel free to reopen it if needed!" # Comment added
-          only-labels: "needs-more-info" # 只处理标签为 "needs-more-info" 的问题
+          days-before-stale: 3 # 3 天不活跃后标记 Stale
+          days-before-close: 3 # 标记 Stale 后 3 天不活跃则关闭问题
+          stale-issue-label: "Stale"
+          stale-issue-message: "🕸️ This has been inactive for 3 days, please confirm if it still needs attention~~"
+          close-issue-message: "🚫 This has been inactive for too long and is now closed, feel free to reopen it if needed!"
+          only-labels: "needs-more-info"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
