@@ -28,14 +28,25 @@ public class ChargeTaskAppService(
         CancellationToken cancellationToken = default
     )
     {
-        if (!chargeTaskOptions.CurrentValue.IsEnable)
+        var options = chargeTaskOptions.CurrentValue;
+
+        //没有任何账号级覆盖时，保留原有的全局关闭快速跳过逻辑
+        if (!options.IsEnable && options.Accounts.Count == 0)
         {
-            logger.LogInformation("已配置为关闭，跳过");
+            logger.LogInformation("已配置为全局关闭，跳过");
             return;
         }
 
         await SetCookiesAsync(ck, cancellationToken);
         UserInfo userInfo = await Login(ck);
+
+        //账号级配置优先；未配置则继承全局IsEnable
+        if (!options.IsEnabledFor(userInfo.Mid))
+        {
+            logger.LogInformation("账号 {uid} 已配置为关闭充电，跳过", userInfo.Mid);
+            return;
+        }
+
         await Charge(userInfo, ck);
     }
 
@@ -70,7 +81,7 @@ public class ChargeTaskAppService(
     }
 
     /// <summary>
-    /// 每月为自己充电
+    /// 使用免费B币券充电
     /// </summary>
     [TaskInterceptor("B币券充电", rethrowWhenException: false)]
     private async Task Charge(UserInfo userInfo, BiliCookie ck)
