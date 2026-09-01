@@ -245,7 +245,7 @@ public class LoginDomainService(
             var qlEnvList = await qingLongApi.GetEnvsAsync(QingLongCookieEnvPrefix, token);
             if (qlEnvList.Code != 200)
             {
-                throw new Exception($"查询环境变量失败：{qlEnvList.ToJsonStr()}");
+                throw new Exception($"查询青龙环境变量失败，code={qlEnvList.Code}");
             }
 
             logger.LogDebug("查询到 {count} 个 Zzz Cookie 环境变量", qlEnvList.Data.Count);
@@ -270,8 +270,12 @@ public class LoginDomainService(
                 };
 
                 var updateRe = await qingLongApi.UpdateEnvsAsync(update, token);
-                logger.LogInformation(updateRe.Code == 200 ? "更新成功！" : updateRe.ToJsonStr());
+                if (updateRe.Code != 200)
+                {
+                    throw new Exception($"更新青龙Cookie环境变量失败，code={updateRe.Code}");
+                }
 
+                logger.LogInformation("更新成功！");
                 return true;
             }
 
@@ -298,11 +302,17 @@ public class LoginDomainService(
                 remarks = $"bili-{ckInfo.UserId}",
             };
             var addRe = await qingLongApi.AddEnvsAsync([add], token);
-            logger.LogInformation(addRe.Code == 200 ? "新增成功！" : addRe.ToJsonStr());
+            if (addRe.Code != 200)
+            {
+                throw new Exception($"新增青龙Cookie环境变量失败，code={addRe.Code}");
+            }
+
+            logger.LogInformation("新增成功！");
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogError("Cookie持久化到青龙失败：{msg}", ex.Message);
             await PrintIfSaveCookieFailAsync(ckInfo, cancellationToken);
             return false;
         }
@@ -425,6 +435,17 @@ public class LoginDomainService(
             qingLongOptions.Value.ClientId!,
             qingLongOptions.Value.ClientSecret!
         );
+        if (token.Code != 200)
+        {
+            logger.LogError("青龙OpenAPI鉴权失败，code={code}", token.Code);
+            return "";
+        }
+
+        if (string.IsNullOrWhiteSpace(token.Data.token) || string.IsNullOrWhiteSpace(token.Data.token_type))
+        {
+            logger.LogError("青龙OpenAPI鉴权返回空token");
+            return "";
+        }
 
         return $"{token.Data.token_type} {token.Data.token}";
     }
