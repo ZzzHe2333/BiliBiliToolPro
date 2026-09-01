@@ -29,7 +29,7 @@ Zzz_ChargeTaskConfig__IsEnable=true
 Zzz_ChargeTaskConfig__AutoChargeUpId=18461303
 ```
 
-不要给新的 `Zzz-Bili` 任务继续新增 `Ray_*` Cookie。`Ray_*` 仅作为普通模式的历史兼容逻辑保留。
+不要给新的 `Zzz-Bili` 任务继续新增 `Ray_*` Cookie。`Ray_*` 仅作为普通非隔离 Console 模式的历史兼容逻辑保留。
 
 ## 3. 为什么青龙显示的账号数量比我配置的多？
 
@@ -73,13 +73,13 @@ Zzz_BILI_MODE=dotnet
 Zzz_BILI_MODE=bilitool
 ```
 
-如果使用 dotnet 模式，可根据网络环境控制国内镜像：
+默认不会改写青龙容器的系统软件源：
 
 ```bash
-Zzz_BILI_USE_CN_MIRROR=true
+Zzz_BILI_USE_CN_MIRROR=false
 ```
 
-境外机器或已有自定义源时可设为 `false`。
+如果网络环境确实需要，可以显式设为 `true`。注意：开启后修改的是整个青龙容器的 apt/apk 源，同一面板中的其他任务也会受到影响。
 
 ## 6. bilitool 为什么提示 commit 不一致？
 
@@ -87,7 +87,7 @@ Zzz_BILI_USE_CN_MIRROR=true
 
 `bilitool` 会比较当前订阅仓库 commit 与 `fork-main` 滚动预发布记录的构建 commit。两者不一致时会拒绝运行旧二进制，等待 GitHub Actions 完成与当前源码匹配的新构建。
 
-## 7. Docker / Podman 拉哪个镜像？
+## 7. Docker / Podman / Helm 拉哪个镜像？
 
 本项目维护的镜像是：
 
@@ -95,7 +95,7 @@ Zzz_BILI_USE_CN_MIRROR=true
 ghcr.io/zzzhe2333/bili_tool_web:latest
 ```
 
-Docker、Podman、Helm 和 Krew 示例均应使用这个镜像，而不是其他账号下的历史镜像。
+Docker、Podman 和 Helm 示例均使用这个镜像，而不是其他账号下的历史镜像。仓库中的旧 Krew 插件已经移除，因为它绑定早期 Console 容器架构。
 
 ## 8. Docker / Web 环境变量需要 `Zzz_` 前缀吗？
 
@@ -109,13 +109,13 @@ DailyTaskConfig__Cron
 Security__RandomSleepMaxMin
 ```
 
-`Zzz_*` 严格隔离主要用于青龙 Console 订阅任务。
+`Zzz_*` 严格隔离主要用于青龙 Console 订阅任务，以及仓库提供的腾讯云 SCF 严格隔离示例。
 
 ## 9. 为什么天选时刻、银瓜子兑换、批量取关没有青龙任务？
 
 这是本项目的默认策略。
 
-以下三个功能保留代码，但默认关闭，并且不在 `qinglong/SubscriptionTasks/` 中提供定时任务入口：
+以下三个功能保留代码，但最终有效默认状态为关闭，并且不在 `qinglong/SubscriptionTasks/` 中提供定时任务入口：
 
 ```text
 LiveLottery
@@ -123,7 +123,7 @@ Silver2Coin
 UnfollowBatched
 ```
 
-如确实需要，可以通过显式配置和手工运行方式启用。
+基础 `appsettings.json` 中保留的历史 `true` 值会被本仓库的 `appsettings.ForkDefaults.json` 覆盖。如确实需要，可以通过显式配置和手工运行方式启用。
 
 ## 10. B 币券充电到谁？
 
@@ -155,13 +155,24 @@ Zzz_ChargeTaskConfig__ChargeComment=你的留言
 
 源码或 framework-dependent 包需要 `.NET 8`。自包含 Release 不需要单独安装对应 Runtime。
 
-下载请始终从本仓库 Releases 获取：
+正式版本下载请从本仓库 Releases 获取。`fork-main` 是青龙 `bilitool` 模式使用的滚动预发布，不建议当作普通桌面/服务器正式版本下载入口。
 
-```text
-https://github.com/ZzzHe2333/BiliBiliToolPro/releases
-```
+当前正式发布包命名规则见 [本地运行说明](runInLocal.md)。
 
-## 13. 出现 B 站 `-352` 怎么办？
+## 13. 为什么镜像标签和版本标签不能随便复用？
+
+正式版本号必须唯一对应一个 Git commit。
+
+本仓库现在的规则是：
+
+- `main` 普通代码更新只发布 `latest` 和 `main-<commit>` 镜像标签；
+- 正式版本标签（例如 `3.8.3`）只由正式 Release 流程创建；
+- 如果同名 Git tag 已经指向其他 commit，正式发布会直接失败，要求先提升版本号；
+- 正式 Release 完成后再发布同版本的容器镜像。
+
+这样可以避免“Git 标签指向旧代码，但同名容器标签已经变成新代码”的来源错位。
+
+## 14. 出现 B 站 `-352` 怎么办？
 
 `-352` 通常是接口风险控制响应。HTTP 状态码可能仍然是 200，但业务 JSON 中 `code` 为负数。
 
@@ -172,6 +183,6 @@ https://github.com/ZzzHe2333/BiliBiliToolPro/releases
 3. 检查 User-Agent、WBI 或请求指纹相关配置；
 4. 不要把 `-352` 响应当成包含正常 `data` 的成功响应反序列化。
 
-## 14. 如何提交代码修改？
+## 15. 如何提交代码修改？
 
 从本仓库创建分支，完成修改后向 `main` 提交 Pull Request。不要通过自动上游同步工作流覆盖 `main`。
