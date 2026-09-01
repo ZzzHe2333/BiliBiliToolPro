@@ -24,6 +24,20 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    // 本 fork 默认不启用银瓜子兑换、批量取关和天选时刻。
+    // WebApplication.CreateBuilder 已先加载 appsettings / 环境变量 / 命令行，因此这里在
+    // appsettings 后加入 fork 默认值，再重新加入环境变量和命令行，确保用户显式配置仍然优先。
+    builder.Configuration.AddJsonFile(
+        "appsettings.ForkDefaults.json",
+        optional: true,
+        reloadOnChange: true
+    );
+    builder.Configuration.AddEnvironmentVariables();
+    if (args.Length > 0)
+    {
+        builder.Configuration.AddCommandLine(args);
+    }
+
     builder.Configuration.AddJsonFile("config/cookies.json", optional: true, reloadOnChange: true);
     var sqliteConnStr = builder.Configuration.GetConnectionString("Sqlite");
     if (!string.IsNullOrEmpty(sqliteConnStr))

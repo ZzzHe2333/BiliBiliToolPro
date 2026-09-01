@@ -77,7 +77,10 @@ public class Program
                 string envName = hostBuilderContext.HostingEnvironment.EnvironmentName;
                 configurationBuilder
                     .AddJsonFile("appsettings.json", true, true)
-                    .AddJsonFile($"appsettings.{envName}.json", true, true);
+                    .AddJsonFile($"appsettings.{envName}.json", true, true)
+                    // 本 fork 默认不启用银瓜子兑换、批量取关和天选时刻；
+                    // 用户机密、环境变量、命令行仍可显式覆盖这些默认值。
+                    .AddJsonFile("appsettings.ForkDefaults.json", true, true);
 
                 //用户机密：
                 if (env.IsDevelopment() && env.ApplicationName?.Length > 0)

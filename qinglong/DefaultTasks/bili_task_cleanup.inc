@@ -58,12 +58,15 @@ const taskDefs = [
   ['test', /zzz_bili_task_test\.sh/i, ['Zzz-Bili 测试Cookie']],
 ];
 
+function belongsToFork(task) {
+  const command = String(task.command || '');
+  return /ZzzHe2333[\\/_-]BiliBiliToolPro/i.test(command);
+}
+
 function isLegacyDefaultTask(task) {
   const command = String(task.command || '');
-  // 青龙可能保存为斜杠路径，也可能把路径扁平化为下划线；两种都兼容。
-  const belongsToFork = /ZzzHe2333[\/_-]BiliBiliToolPro/i.test(command);
   const defaultTaskPath = /qinglong[\\/_-]DefaultTasks(?:[\\/_-]dev)?[\\/_-]bili(?:_dev)?_task_[^\s"'<>]*\.sh/i.test(command);
-  return belongsToFork && defaultTaskPath;
+  return belongsToFork(task) && defaultTaskPath;
 }
 
 function logicalKey(task) {
@@ -100,13 +103,14 @@ function preference(task) {
     const id = Number(task.id);
     if (!Number.isInteger(id) || id <= 0) continue;
 
-    // 本 fork 的 DefaultTasks / DefaultTasks/dev 旧入口全部属于遗留任务，直接清理。
+    // 只允许处理本 fork 的任务，绝不按名字跨仓库清理。
+    if (!belongsToFork(task)) continue;
+
     if (isRetired(task)) {
       deleteIds.add(id);
       continue;
     }
 
-    // SubscriptionTasks 自身如果因为重复订阅生成多条，也只保留一条。
     const key = logicalKey(task);
     if (!key) continue;
     if (!groups.has(key)) groups.set(key, []);
@@ -139,7 +143,7 @@ function preference(task) {
     throw new Error(`deleteCrons 返回 code=${code}, message=${result?.message || ''}`);
   }
 
-  console.log(`[Zzz-Bili] 定时任务清理完成：删除 ${ids.length} 条 DefaultTasks 遗留/重复任务`);
+  console.log(`[Zzz-Bili] 定时任务清理完成：删除 ${ids.length} 条本仓库 DefaultTasks 遗留/重复任务`);
   if (typeof api.close === 'function') api.close();
 })().catch((error) => {
   try {

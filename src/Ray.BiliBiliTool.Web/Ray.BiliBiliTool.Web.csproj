@@ -37,6 +37,12 @@
     <ProjectReference Include="..\Ray.BiliBiliTool.Web.Client\Ray.BiliBiliTool.Web.Client.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Content Update="appsettings.ForkDefaults.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Remove="Auth\JwtAuthStateProvider.cs" />
   </ItemGroup>
   <ItemGroup>
