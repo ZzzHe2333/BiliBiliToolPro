@@ -23,6 +23,7 @@ public class ChargeDomainService(
 ) : IChargeDomainService
 {
     private const string HitokotoClientName = "Hitokoto";
+    private static readonly TimeSpan ReminderWindow = TimeSpan.FromDays(5);
     private static readonly TimeSpan AutoChargeWindow = TimeSpan.FromHours(48);
 
     private readonly DailyTaskOptions _dailyTaskOptions = dailyTaskOptions.CurrentValue;
@@ -30,7 +31,7 @@ public class ChargeDomainService(
     private readonly IDailyTaskApi _dailyTaskApi = dailyTaskApi;
 
     /// <summary>
-    /// 自动充电：只处理已记录领取时间、且进入领取后30天到期前48小时窗口的B币券。
+    /// 自动充电：记录领取时间后，在预计到期前5天开始提醒，进入最后48小时才自动充电。
     /// </summary>
     public async Task Charge(UserInfo userInfo, BiliCookie ck)
     {
@@ -77,16 +78,38 @@ public class ChargeDomainService(
 
         if (remaining > AutoChargeWindow)
         {
-            logger.LogInformation(
-                "距离预计到期约 {hours:F1} 小时，尚未进入48小时自动充电窗口，跳过",
-                remaining.TotalHours
-            );
+            if (remaining <= ReminderWindow && couponBalance > 0)
+            {
+                logger.LogWarning(
+                    "【B币券临期提醒】当前余额 {balance}，距离预计到期约 {days:F1} 天（{hours:F0}小时）；请及时使用，进入最后48小时后将尝试自动充电",
+                    couponBalance,
+                    remaining.TotalDays,
+                    remaining.TotalHours
+                );
+            }
+            else
+            {
+                logger.LogInformation(
+                    "距离预计到期约 {hours:F1} 小时，尚未进入48小时自动充电窗口，跳过",
+                    remaining.TotalHours
+                );
+            }
             return;
         }
 
         if (couponBalance < 2)
         {
-            logger.LogInformation("已进入临期窗口，但余额小于2，无法充电");
+            if (couponBalance > 0)
+            {
+                logger.LogWarning(
+                    "【B币券临期提醒】已进入最后48小时，但余额仅 {balance}，不足2无法充电，请在到期前手动使用",
+                    couponBalance
+                );
+            }
+            else
+            {
+                logger.LogInformation("已进入临期窗口，但B币券余额为0，无需充电");
+            }
             return;
         }
 
