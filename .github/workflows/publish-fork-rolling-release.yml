@@ -5,12 +5,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'src/**'
-      - 'scripts/publish.sh'
-      - 'common.props'
-      - 'Directory.Packages.props'
-      - '.github/workflows/publish-fork-rolling-release.yml'
+    # bilitool 模式会把 fork-main-commit.txt 与当前仓库 HEAD 做严格校验。
+    # 因此 main 的任何提交（包括仅文档/青龙脚本变化）都必须更新滚动构建，
+    # 否则会出现“源码已更新但二进制被误判为过期”的情况。
 
 permissions:
   contents: write
