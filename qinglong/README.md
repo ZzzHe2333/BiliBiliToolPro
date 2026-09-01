@@ -189,13 +189,13 @@ Zzz_ChargeTaskConfig__Accounts__<B站UID>__AutoChargeUpId=18461303
 
 ## 7. fork 专用运行与网络变量
 
-如果需要让本 fork 和原版使用不同运行模式，可使用：
+默认使用：
 
 ```bash
 Zzz_BILI_MODE=dotnet
 ```
 
-可选值：
+支持：
 
 ```text
 dotnet
@@ -232,6 +232,40 @@ Zzz_BILI_USE_CN_MIRROR=false
 
 脚本不再通过访问 Google 判断网络地区，避免中国大陆环境下误判或无意义等待。
 
+### 7.2. bilitool 自包含模式
+
+`bilitool` 模式不再读取原版 Release，也不依赖普通版本号 Release。该模式使用本 fork 自动维护的：
+
+```text
+fork-main
+```
+
+滚动预发布。`main` 的程序代码发生变化后，GitHub Actions 会重新构建本 fork 的 Linux 自包含二进制。
+
+青龙安装时会同时校验：
+
+```text
+当前订阅仓库 commit
+==
+fork-main 构建记录的 commit
+```
+
+只有两者完全一致才会安装/运行新二进制。这样不会因为滚动构建尚未完成而误运行旧版 fork，更不会下载原版二进制覆盖本 fork 功能。
+
+支持的青龙运行平台包括：
+
+```text
+linux-x64
+linux-musl-x64
+linux-arm64
+linux-arm
+linux-musl-arm64
+```
+
+已经安装且 `tag.txt` 中记录的 commit 与当前订阅仓库一致时，不会重复访问 Release 或重复下载。
+
+在中国大陆如果 GitHub Release 下载较慢，可给 `Zzz_BILI_GITHUB_PROXY` 配置自己信任的下载代理；滚动构建的版本标记和二进制都会使用该代理前缀。
+
 未设置 `Zzz_BILI_MODE` / `Zzz_BILI_GITHUB_PROXY` / `Zzz_BILI_USE_CN_MIRROR` 时，会兼容读取对应的 `BILI_*` 变量；其中国内包源默认开启。
 
 ## 8. GitHub 加速
@@ -266,15 +300,15 @@ Zzz_BiliBiliCookies__*
 
 ### 9.3. 安装 dotnet 失败
 
-可以改用：
+可以改用本 fork 自包含模式：
 
 ```bash
 Zzz_BILI_MODE=bilitool
 ```
 
-如果使用 `dotnet` 模式，则需要青龙容器能够正常安装/运行 .NET 8。
+如果 `fork-main` 的构建 commit 暂时与当前订阅 commit 不一致，脚本会拒绝运行旧二进制并在日志中明确提示。也可以继续使用默认 `dotnet` 模式。
 
-如果不希望使用默认中国大陆镜像，可先设置：
+如果不希望使用默认中国大陆镜像，可设置：
 
 ```bash
 Zzz_BILI_USE_CN_MIRROR=false
