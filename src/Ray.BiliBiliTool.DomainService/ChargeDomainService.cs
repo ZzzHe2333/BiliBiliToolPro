@@ -24,7 +24,7 @@ public class ChargeDomainService(
     private readonly IDailyTaskApi _dailyTaskApi = dailyTaskApi;
 
     /// <summary>
-    /// 月底自动己充电
+    /// 月底自动充电
     /// 仅充会到期的B币券，低于2的时候不会充
     /// </summary>
     public async Task Charge(UserInfo userInfo, BiliCookie ck)
@@ -48,14 +48,14 @@ public class ChargeDomainService(
             return;
         }
 
-        //如果没有配置或配了-1，则使用fallback值（B站最新策略已不允许为自己充电）
+        //账号级目标优先，未配置时继承全局目标；空值或-1使用fallback值
+        string? configuredTargetUpId = _chargeTaskOptions.GetAutoChargeUpIdFor(userInfo.Mid);
         string targetUpId =
-            string.IsNullOrWhiteSpace(_chargeTaskOptions.AutoChargeUpId)
-            || _chargeTaskOptions.AutoChargeUpId == "-1"
+            string.IsNullOrWhiteSpace(configuredTargetUpId) || configuredTargetUpId == "-1"
                 ? Config.Constants.FallbackAutoChargeUpId
-                : _chargeTaskOptions.AutoChargeUpId!;
+                : configuredTargetUpId;
 
-        logger.LogDebug("【目标Up】{up}", targetUpId);
+        logger.LogDebug("【当前账号】{uid}，【目标Up】{up}", userInfo.Mid, targetUpId);
 
         var request = new ChargeRequest(couponBalance, long.Parse(targetUpId), ck.BiliJct);
 
