@@ -54,9 +54,9 @@ environment:
 
 此时除 `222222` 之外的账号都不会自动充电。
 
-## 青龙 / Console 示例
+## 青龙订阅示例
 
-本 fork 在青龙中推荐使用独立的 `Zzz_` 前缀：
+本仓库青龙订阅使用严格隔离，只读取 `Zzz_*` 业务配置：
 
 ```bash
 Zzz_ChargeTaskConfig__IsEnable=false
@@ -66,6 +66,6 @@ Zzz_ChargeTaskConfig__Accounts__222222__IsEnable=true
 Zzz_ChargeTaskConfig__Accounts__222222__AutoChargeUpId=999999
 ```
 
-程序仍兼容原来的 `Ray_` 和无前缀配置，但 `Zzz_` 在本 fork 中优先级最高。若与原版 `RayWangQvQ/BiliBiliToolPro` 共存在同一个青龙面板，请让原版使用 `Ray_*`，本 fork 使用 `Zzz_*`。
+普通、非隔离的 Console 模式为了历史兼容仍可读取无前缀、`Ray_*` 和 `Zzz_*` 配置，但不要把这套兼容规则套用到 `Zzz-Bili` 青龙订阅任务上。
 
 账号键使用 B 站 UID，而不是 `BiliBiliCookies__1`、`BiliBiliCookies__2` 的序号，因此调整 Cookie 顺序不会导致配置对应错账号。
