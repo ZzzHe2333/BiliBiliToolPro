@@ -8,5 +8,12 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" />
     <PackageReference Include="Ray.Infrastructure" />
+    <!--
+      Ray.Infrastructure 0.0.26 传递依赖 Rougamo.Fody >= 5.0.1。
+      Rougamo 5.x 附带的编译期 Analyzer 使用了比 .NET 8 SDK 更高版本的 Roslyn，
+      在青龙 Alpine/.NET 8 上会产生 CS9057。Fody 编织本身不属于 analyzers 资产，
+      因此仅排除 Analyzer，保留 Rougamo/Fody 的运行和编织依赖。
+    -->
+    <PackageReference Include="Rougamo.Fody" ExcludeAssets="analyzers" PrivateAssets="all" />
   </ItemGroup>
 </Project>
