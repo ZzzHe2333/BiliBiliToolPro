@@ -415,7 +415,7 @@ public class LoginDomainService(
             logger.LogWarning("未配置青龙的ClientId和ClientSecret，无法自动获取token");
             logger.LogWarning(
                 "教程：{qingDoc}",
-                "https://github.com/RayWangQvQ/BiliBiliToolPro/blob/main/qinglong/README.md"
+                "https://github.com/ZzzHe2333/BiliBiliToolPro/blob/main/qinglong/README.md"
             );
             return "";
         }
