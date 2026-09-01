@@ -2,260 +2,153 @@
 
 <div align="center">
 
-<h1 align="center">
-
-BiliTool
-
-</h1>
+# BiliTool
 
 [![GitHub Stars](https://img.shields.io/github/stars/ZzzHe2333/BiliBiliToolPro?style=flat-square)](https://github.com/ZzzHe2333/BiliBiliToolPro/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/ZzzHe2333/BiliBiliToolPro?style=flat-square)](https://github.com/ZzzHe2333/BiliBiliToolPro/network)
-[![GitHub Issues](https://img.shields.io/github/issues/ZzzHe2333/BiliBiliToolPro?style=flat-square)](https://github.com/ZzzHe2333/BiliBiliToolPro/issues)
-[![GitHub Contributors](https://img.shields.io/github/contributors/ZzzHe2333/BiliBiliToolPro?style=flat-square)](https://github.com/ZzzHe2333/BiliBiliToolPro/graphs/contributors)
 [![GitHub All Releases](https://img.shields.io/github/downloads/ZzzHe2333/BiliBiliToolPro/total?style=flat-square)](https://github.com/ZzzHe2333/BiliBiliToolPro/releases)
-[![GitHub Release (latest SemVer)](https://img.shields.io/github/v/release/ZzzHe2333/BiliBiliToolPro?style=flat-square)](https://github.com/ZzzHe2333/BiliBiliToolPro/releases)
-[![GitHub License](https://img.shields.io/github/license/ZzzHe2333/BiliBiliToolPro?style=flat-square)](https://github.com/ZzzHe2333/BiliBiliToolPro/blob/main/LICENSE)
-
-<a href="https://trendshift.io/repositories/3329" target="_blank">
-    <img src="https://trendshift.io/api/badge/repositories/3329" alt="ZzzHe2333%2FBiliBiliToolPro | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/>
-</a>
+[![GitHub Release](https://img.shields.io/github/v/release/ZzzHe2333/BiliBiliToolPro?style=flat-square)](https://github.com/ZzzHe2333/BiliBiliToolPro/releases)
+[![GitHub License](https://img.shields.io/github/license/ZzzHe2333/BiliBiliToolPro?style=flat-square)](LICENSE)
 
 </div>
 
-**BiliTool 是一个自动执行任务的工具，当我们忘记做某项任务时，它会像一个贴心小助手，按照我们预先吩咐它的命令，在指定频率、时间范围内帮助我们完成计划的任务。**
+BiliTool 是一个自动执行 B 站日常任务的开源工具，支持青龙、Docker/Podman、Kubernetes/Helm、本地运行等部署方式。
 
-**BiliTool is an automated task execution tool that acts as a helpful assistant, following pre-configured commands to complete planned tasks within specified frequencies and timeframes when we forget to do them.**
+> **独立维护说明**：`ZzzHe2333/BiliBiliToolPro` 当前是独立仓库，不属于其他仓库的 fork network，也不会自动拉取、合并或硬重置到其他代码库。所有发布包、青龙滚动二进制和容器镜像均以本仓库为准。
 
-主要功能如下：
+## 主要功能
 
-- **扫码登录，自动更新cookie**
-- **每日获取满额升级经验（登录、投币、点赞、分享视频）（支持指定up主）**
-- **直播间挂机**
-- **每天漫画签到**
-- **每天直播签到**
-- **直播中心银瓜子兑换为硬币**
-- **每月领取大会员赠送的 5 张 B 币券和福利（忘记或者不领就浪费了哦）**
-- **每月领取大会员漫画福利**
-- **月底在 B 币券过期前进行充电（支持指定想要支持的up主，如果没有喜欢的up，也可以为自己充个电啊，做个用爱为自己发电的人~）**
-- **直播中心天选时刻自动参与抽奖**
-- **批量取关**
-- **大会员大积分任务**
-- **支持多账号**
-- **理论上支持所有远端的日志推送（默认支持推送到Telegram、企业微信、钉钉、PushPlus、Server酱、酷推，另外也支持自定义推送到任意api）**
----
-[目录]
+- 扫码登录并维护 Cookie
+- 每日任务：登录、观看、分享、投币等
+- 直播粉丝牌任务
+- 漫画签到与阅读
+- 大会员漫画权益
+- 大会员福利领取
+- 大会员大积分任务
+- 免费 B 币券充电，支持全局或按账号指定目标 UP
+- 多账号
+- 日志与通知推送
 
-<!-- TOC depthFrom:2 -->
+以下功能代码仍保留，但**本项目默认关闭，青龙订阅也不创建对应定时任务**：
 
-- [1. 如何使用](#1-如何使用)
-    - [1.1. 部署 BiliTool](#11-部署-bilitool)
-        - [1.1.1. 方案一：免费在线容器](#111-方案一免费在线容器)
-        - [1.1.2. 方式二：青龙](#112-方式二青龙)
-        - [1.1.3. 方式三：Docker 或 Podman 运行](#113-方式三docker-或-podman-运行)
-        - [1.1.4. 方式四：下载程序包到本地或服务器运行](#114-方式四下载程序包到本地或服务器运行)
-        - [1.1.5. 方式五：Chart部署](#115-方式五chart部署)
-    - [1.2. 消息推送（可选）](#12-消息推送可选)
-- [2. 功能任务说明](#2-功能任务说明)
-- [3. 个性化自定义配置](#3-个性化自定义配置)
-- [4. 多账号支持](#4-多账号支持)
-- [5. 常见问题](#5-常见问题)
-- [6. 版本发布及更新](#6-版本发布及更新)
-- [7. 成为开源贡献成员](#7-成为开源贡献成员)
-    - [7.1. 贡献代码](#71-贡献代码)
-    - [7.2. 贡献文档](#72-贡献文档)
-- [8. 捐赠支持](#8-捐赠支持)
-- [9. 其他](#9-其他)
+- `LiveLottery`：天选时刻
+- `Silver2Coin`：银瓜子兑换硬币
+- `UnfollowBatched`：批量取关
 
-<!-- /TOC -->
+如确有需要，可以通过显式配置自行启用。
 
----
-**Github 仓库地址：[ZzzHe2333/BiliBiliToolPro](https://github.com/ZzzHe2333/BiliBiliToolPro)**
+## 部署
 
-**注意：**
+| 方式 | 文档 | 默认来源 |
+| --- | --- | --- |
+| 青龙 | [qinglong/README.md](qinglong/README.md) | 本仓库源码 / `fork-main` 滚动二进制 |
+| Docker | [docker/README.md](docker/README.md) | `ghcr.io/zzzhe2333/bili_tool_web:latest` |
+| Podman | [podman/README.md](podman/README.md) | `ghcr.io/zzzhe2333/bili_tool_web:latest` |
+| Helm / Kubernetes | [helm/README.md](helm/README.md) | `ghcr.io/zzzhe2333/bili_tool_web:latest` |
+| 本地 / 服务器 | [docs/runInLocal.md](docs/runInLocal.md) | 本仓库 Releases |
 
-- **本应用仅用于学习和测试，作者本人并不对其负责，请于运行测试完成后自行删除，请勿滥用！**
-- **所有代码都是开源且透明的，任何人均可查看，程序不会保存或滥用任何用户的个人信息**
-- **应用内几乎所有功能都开放了配置（如任务开关、日期、id等），详细信息可阅读配置文档**
+### 青龙推荐配置
 
-运行图示：
+青龙订阅任务启用严格隔离模式，只读取 `Zzz_*` 业务配置，并且不会读取本地 `cookies.json`：
 
-<p align="center">
-    <img src="docs/imgs/web-schedules.png" alt="运行图示" width="800" />
-    <br/>
-    <img src="docs/imgs/web-schedules-log.png" alt="运行日志" width="800" />
-    <br/>
-    <img src="docs/imgs/web-configs.png" alt="运行日志" width="800" />
-    <br/>
-</p>
+```bash
+Zzz_BiliBiliCookies__1=<COOKIE>
+Zzz_BiliBiliCookies__2=<COOKIE>
 
-## 1. 如何使用
-
-BiliTool 实现自动完成任务的原理，是通过调用一系列开放的api实现的。
-
-**要使用 BiliTool，很简单，按照下面教程部署完成，运行后扫码登录即可。**
-
-### 1.1. 部署 BiliTool
-
-支持多种部署方式，以下选择任一适合自己的方式即可。
-
-#### 1.1.1. 方案一：免费在线容器
-
-有很多平台会提供一定免费额度的在线容器，基于官方镜像，部署 BiliTool 很容易。
-
-以下以 ClawCloud 为例，其他平台操作类似：
-
-[>>ClawCloud 部署教程](docs/claw-cloud.md)
-
-#### 1.1.2. 方式二：青龙
-
-[>>青龙部署教程](qinglong/README.md)
-
-#### 1.1.3. 方式三：Docker 或 Podman 运行
-
-[>>Docker 部署说明](docker/README.md)
-
-[>>Podman 部署说明](podman/README.md)
-
-#### 1.1.4. 方式四：下载程序包到本地或服务器运行
-
-[>>本地部署说明](docs/runInLocal.md)
-
-#### 1.1.5. 方式五：Chart部署
-
-[>>Chart部署说明](helm/README.md)
-
-### 1.2. 消息推送（可选）
-
-如果配置了推送，执行成功后，指定的接收端会收到推送消息，推送效果如下所示：
-
-<p align="center">
-    <img src="docs/imgs/push-tg.png" alt="Telegram推送图示" width="300">
-</p>
-
-目前默认支持**Telegram推送、PushPlus推送、企业微信应用推送、企业微信推送、钉钉推送、Microsoft Teams推送、Server酱推送和酷推QQ推送**（以上顺序即为个人推荐的排序），如果需要推送到其他端，也可以配置为任意的可以接受消息的Api地址，关于如何配置推送请详见下面的**个性化自定义配置**章节。
-
-推送配置见：[confifuration](/docs/configuration.md)
-
-## 2. 功能任务说明
-
-这里的**任务**是指一组功能的集合，是工具每次运行的最小单位。
-
-任务列表如下：
-
-
-|    任务名     |      Code       |                                                功能                                                 |      推荐运行频率      |
-| :--------: | :-------------: | :-----------------------------------------------------------------------------------------------: | :--------------: |
-|    扫码登录    |      Login      |                   使用app扫码登录，用于第一次运行时初始化cookie，或cookie过期时的更新。不同平台会将cookie存储到不同地方                   |       手动         |
-|    每日任务    |      Daily      |                             完成每日任务获取满额65点经验（登录、观看视频、分享视频、投币），快速升级Lv6                              |       每天一次       |
-|   天选时刻抽奖   |   LiveLottery   |                                  直播中心天选时刻抽奖，大部分抽奖都需要关注主播，介意的不要开启                                  |      每天0-4次      |
-|    批量取关    | UnfollowBatched |                                 批量取关指定分组下的所有关注（主要用于清理天选抽奖而产生的关注）                                  |       手动运行       |
-|   大会员大积分   |   VipBigPoint   |                                        大会员大积分任务（签到、浏览、观看）                                         |    每天一次，建议凌晨     |
-|   直播间挂机    |  LiveFansMedal  |                                               直播间挂机                                               |       每天一次       |
-|    漫画任务    |      Manga      |                                              漫画签到、阅读                                              |       每天一次       |
-| 领取大会员漫画权益  | MangaPrivilege  |                                            领取大会员的漫画权益                                             |       每天一次       |
-|  银瓜子兑换硬币   |   Silver2Coin   |                                             使用银瓜子换取硬币                                             |       每天一次       |
-|  免费B币券充电   |     Charge      |                                 大会员每31天可免费领取一张5B币券，可用于给除自己以外的UP充电                                 |       每天一次       |
-|  领取大会员福利   |  VipPrivilege   |                                              领取大会员福利                                              |       每天一次       |
-|  测试Cookie  |      Test       |                                           测试Cookie是否正常                                            |       手动运行       |
-
-
-## 3. 个性化自定义配置
-
-[>>点击查看配置说明文档](docs/configuration.md)
-
-## 4. 多账号支持
-
-部署成功后，直接去运行扫码登录任务，扫码成功后，应用会自动更新或添加cookie。
-
-青龙平台会添加环境变量里，Key 为 `Ray_BiliBiliCookies__0`、`Ray_BiliBiliCookies__1`、`Ray_BiliBiliCookies__2`...
-
-其他平台默认会添加到名为cookies.json的账号配置文件中：
+Zzz_ChargeTaskConfig__IsEnable=true
+Zzz_ChargeTaskConfig__AutoChargeUpId=18461303
+Zzz_ChargeTaskConfig__ChargeComment=""
 ```
+
+按 B 站账号 UID 单独控制充电：
+
+```bash
+Zzz_ChargeTaskConfig__Accounts__<B站UID>__IsEnable=true
+Zzz_ChargeTaskConfig__Accounts__<B站UID>__AutoChargeUpId=18461303
+```
+
+扫码登录自动写回青龙时，可配置：
+
+```text
+Zzz_QingLongConfig__ClientId
+Zzz_QingLongConfig__ClientSecret
+```
+
+更多说明见 [青龙部署文档](qinglong/README.md)。
+
+### Docker / Podman / Web 配置
+
+容器运行的是 Web 项目，环境变量使用标准无前缀配置键，例如：
+
+```yaml
+BiliBiliCookies__1: <COOKIE>
+DailyTaskConfig__Cron: "0 0 15 * * ?"
+```
+
+`Zzz_*` 严格隔离约定主要用于本项目的青龙 Console 订阅任务。
+
+## 任务说明
+
+| 任务 | Code | 默认状态 | 建议频率 |
+| --- | --- | --- | --- |
+| 扫码登录 | `Login` | 可用 | 手动 |
+| 测试 Cookie | `Test` | 可用 | 手动 |
+| 每日任务 | `Daily` | 开启 | 每天一次 |
+| 免费 B 币券充电 | `Charge` | 开启 | 每天检查 |
+| 直播粉丝牌 | `LiveFansMedal` | 开启 | 每天一次 |
+| 漫画任务 | `Manga` | 开启 | 每天一次 |
+| 大会员漫画权益 | `MangaPrivilege` | 开启 | 每天一次 |
+| 大会员大积分 | `VipBigPoint` | 开启 | 每天一次 |
+| 大会员福利 | `VipPrivilege` | 开启 | 每天一次 |
+| 天选时刻 | `LiveLottery` | 默认关闭 | 按需 |
+| 银瓜子兑换硬币 | `Silver2Coin` | 默认关闭 | 按需 |
+| 批量取关 | `UnfollowBatched` | 默认关闭 | 手动 |
+
+## 多账号
+
+青龙使用：
+
+```text
+Zzz_BiliBiliCookies__0
+Zzz_BiliBiliCookies__1
+Zzz_BiliBiliCookies__2
+...
+```
+
+其他平台可以使用标准配置键或 `cookies.json`：
+
+```json
 {
   "BiliBiliCookies": [
     "cookie1",
-    "cookie2",
-    "...",
-  ],
+    "cookie2"
+  ]
 }
-
 ```
 
-## 5. 常见问题
+## 配置与排错
 
-[>>点击查看常见问题文档](docs/questions.md)
+- [配置说明](docs/configuration.md)
+- [常见问题](docs/questions.md)
+- [本地运行](docs/runInLocal.md)
 
-[Issues（议题）](https://github.com/ZzzHe2333/BiliBiliToolPro/issues)板块可以用来提交**Bug**和**建议**；
+## 发布与更新
 
-[Discussions（讨论）](https://github.com/ZzzHe2333/BiliBiliToolPro/discussions)板块可以用来**提问**和**讨论**。
+- 正式程序包：本仓库 [Releases](https://github.com/ZzzHe2333/BiliBiliToolPro/releases)
+- 青龙 `bilitool` 模式：使用本仓库 `fork-main` 滚动预发布，并校验构建 commit 与订阅仓库 commit 一致
+- 容器镜像：`ghcr.io/zzzhe2333/bili_tool_web:latest`
 
-大部分问题其实都可以在文档、议题和讨论中找到答案。
+本仓库不会通过 Repo Sync、Pull App 或其他自动机制同步其他仓库。
 
-所以如果你有疑问，
+## 贡献
 
-* 请先确认是否可以通过升级到最新版本解决
-* 然后搜索文档（特别是配置说明文档和常见问题文档）、议题和讨论，查看是否已有其他人遇到相同问题、是否已有解决方案
+可以从本仓库创建分支并向 `main` 提交 Pull Request。提交前建议确认改动不会破坏：
 
-如果确认还未解决，可以自己提交 Issue，或发布 Discussions 与大家一起探讨，我会尽快确认并解决。
+- `Zzz_*` 青龙配置隔离
+- 本仓库 Release / GHCR 发布链路
+- 默认关闭任务策略
+- 日志敏感信息脱敏
 
-（关于如何正确的提交Issue，请详见**常见问题文档**）。
+## License
 
-## 6. 版本发布及更新
-
-当前正处于稳定的迭代开发中，详细待更新和计划内容可参见 [Projects](https://github.com/ZzzHe2333/BiliBiliToolPro/projects) 和 [Issues](https://github.com/ZzzHe2333/BiliBiliToolPro/issues) 。
-
-想要有重要更新时收到通知的话，可以把仓库右上角的`Star`按钮点亮。
-
-## 7. 成为开源贡献成员
-
-### 7.1. 贡献代码
-
-如果你有好的想法，欢迎向仓库贡献你的代码，贡献步骤：
-
-* 搜索查看 Issue，确定是否已有人提过同类问题
-* 对于不确定的主题，为避免code结束后PR不被接受，可以先新建 Issue，描述问题或建议，讨论清楚后再动手编码
-* 如果确认自己可以解决，请 Fork 仓库后，在**develop 分支**进行编码开发，完成后**提交 PR 到 develop 分支**
-
-我会尽快进行代码审核，测试成功后会合并入 main 主分支，提前感谢您的贡献。
-
-### 7.2. 贡献文档
-
-文档部分由于我个人精力有限（写文档比写代码累多了），所以有些地方写的很简略，甚至有遗漏和错别字，不能贡献代码的朋友也欢迎来一起维护文档，欢迎 PR 来纠正我，一样都算是对开源做贡献了。
-
-## 8. 捐赠支持
-
-个人维护开源不易
-
-感谢支持~
-
-## 9. 其他
-
-`API`参考：
-
-- [www.bilibili.com](https://www.bilibili.com/)
-
-- [SocialSisterYi/bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect)
-
-- [JunzhouLiu/BILIBILI-HELPER](https://github.com/JunzhouLiu/BILIBILI-HELPER)
-
-❤️Thanks to `JetBrains` for the free certificate support:
-
-<p align="center">
-    <img src="https://resources.jetbrains.com/storage/products/company/brand/logos/ReSharper.svg" alt="ReSharper logo" width="200">
-</p>
-
-❤️Thanks to [YxVM](https://yxvm.com/aff.php?aff=668) & [NodeSeekDev](https://github.com/NodeSeekDev/NodeSupport) for sponsoring the server for testing support:
-
-<p align="center">
-    <a href="https://yxvm.com/aff.php?aff=668">
-        <img src="docs/imgs/node-support.png" alt="YxVm logo" width="200">
-    </a>
-</p>
-
-❤️Thanks to [DartNode](https://dartnode.com?aff=FriskyGopher833) for sponsoring the server for testing support:
-
-[![Powered by DartNode](https://dartnode.com/branding/DN-Open-Source-sm.png)](https://dartnode.com "Powered by DartNode - Free VPS for Open Source")
-
-❤️Thank you for your star to this project:
-
-[![Star History Chart](https://api.star-history.com/svg?repos=ZzzHe2333/BiliBiliToolPro&type=Date)](https://www.star-history.com/#ZzzHe2333/BiliBiliToolPro&Date)
+项目按 [GNU GPL v3](LICENSE) 发布。项目由历史 BiliBiliToolPro 代码持续演进，原有版权、作者信息和许可证声明继续保留。

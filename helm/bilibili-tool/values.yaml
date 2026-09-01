@@ -1,68 +1,46 @@
-# Default values for bilibili_tool.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
-
-
 namespace: default
 replicaCount: 1
 
-configmap:
-  name: entry
-
 image:
-  repository: zai7lou/bilibili_tool_pro
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "1.0.1"
+  repository: ghcr.io/zzzhe2333/bili_tool_web
+  pullPolicy: Always
+  tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# For more envs pls take a view at https://github.com/ZzzHe2333/BiliBiliToolPro/blob/main/docs/configuration.md
+service:
+  type: ClusterIP
+  port: 8080
+
+# Web 项目使用标准无前缀配置键。
 env:
-  # cookie - required
-  - name: Ray_BiliBiliCookies__1
-    # past your cookie value
-    value: ""
-  # DailyTrigger - required
-  - name: Ray_DailyTaskConfig__Cron
-    # This means BiliBili Toll triggers at every day's 08:10 AM 
-    value: "10 8 * * *"
-  
-  # Add your custom env vars like
-  # - name: Ray_Security__IntervalSecondsBetweenRequestApi
-  #   value: "20"
-  # - name: Ray_Security__RandomSleepMaxMin
-  #   value: "20"
-  # - name: Ray_LiveLotteryTaskConfig__Cron
-  #   value: ""
+  - name: TZ
+    value: "Asia/Shanghai"
+  - name: DailyTaskConfig__Cron
+    value: "0 0 15 * * ?"
 
-volumes:
-  # if `enabled=true`, then path and name is required
-  log:
-    enabled: true
-    path: "/tmp/logs"
-    name: "bili-tool-vol"
-  login:
-    enabled: true
-    name: "entry"
-
-
+# 默认不使用 hostPath，适合先快速部署。
+# 如需跨 Pod 重建保留日志或 Web 配置，可开启并提供宿主机绝对路径。
+persistence:
+  logs:
+    enabled: false
+    hostPath: ""
+  config:
+    enabled: false
+    hostPath: ""
 
 podAnnotations: {}
 
 resources:
-  # Recommended to set this resources field
   limits:
-    cpu: 100m
-    memory: 120Mi
+    cpu: 500m
+    memory: 512Mi
   requests:
     cpu: 100m
-    memory: 120Mi
+    memory: 128Mi
 
 nodeSelector: {}
-
 tolerations: []
-
 affinity: {}

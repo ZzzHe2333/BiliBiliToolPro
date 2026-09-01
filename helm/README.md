@@ -1,139 +1,118 @@
-<!--- app-name: bilibili-tool -->
+# Helm / Kubernetes 部署
 
-# BiliBili Tool
+当前 Chart 直接部署本仓库维护的 Web 镜像，不再使用早期 Console + 容器内 cron 脚本架构。
 
-BiliBiliTool 是一个自动执行任务的工具，当我们忘记做某项任务时，它会像一个贴心小助手，按照我们预先吩咐它的命令，在指定频率、时间范围内帮助我们完成计划的任务。
+默认镜像：
 
-[Overview of BiliBili Tool](https://github.com/ZzzHe2333/BiliBiliToolPro)
-
-## TL;DR
-
-### 在集群中通过chart部署
-
-```console
-$ git clone https://github.com/ZzzHe2333/BiliBiliToolPro.git
-$ cd ${local_code_repo}/helm/bilibili-tool
-[optional]$ vim values.yaml # provides your own settings like cookies
-$ helm install <my_release_name> .
+```text
+ghcr.io/zzzhe2333/bili_tool_web:latest
 ```
 
-如果没有在values.yaml中提供cookie，那么需要手动扫描日志中的二维码进行登录
+Chart：
 
-```console
-$kubectl logs -f <pod_name>
+```text
+helm/bilibili-tool
 ```
 
-如果在values.yaml中提供了cookie，那么可以不扫描也可以扫描进行登录，上面的步骤可以暂时不执行
+## 安装
 
-## Introduction
-
-这个chart通过[Helm](https://helm.sh)在[Kubernetes](https://kubernetes.io)集群上拉起一个[BiliBiliToolPro](https://github.com/ZzzHe2333/BiliBiliToolPro)deployment
-
-## Prerequisites
-
-- Kubernetes
-- Helm
-
-或者
-
-- Kind
-- Helm
-
-## 安装Chart
-
-安装Chart并命名为 `my-release`:
-
-```console
-$helm repo add my-repo <my_chart_repo>
-$helm install my-release my-repo/bilibili-tool(:1.0.1)
+```bash
+git clone https://github.com/ZzzHe2333/BiliBiliToolPro.git
+cd BiliBiliToolPro
+helm install bilitool ./helm/bilibili-tool
 ```
 
-上述命令需要用户在values.yaml里提供cookie等必须信息
-[Parameters](#parameters) 部分列出了所有可供自定义的值
+默认创建：
 
-> **Tip**: `helm list` 可以列出当前已经列出的所有的release
+- 1 个 Web Deployment
+- 1 个 `ClusterIP` Service
+- 容器端口 `8080`
 
-## 卸载 Chart
+本地访问示例：
 
-卸载 `my-release` deployment:
-
-```console
-$helm delete my-release
+```bash
+kubectl port-forward service/bilitool-bilibili-tool 22330:8080
 ```
 
-上述命令卸载掉所有的release相关资源
+如果你设置了 `fullnameOverride` 或 Release 名不同，请以 `kubectl get service` 显示的 Service 名称为准。
 
-## Parameters
+## 配置账号
 
-| Name                      | Description                                     | Value | Required |
-| ------------------------- | ----------------------------------------------- | ----- | -------- |
-| `replicaCount`    | Deployment Relicas Count                   | `1`  | true |
-| `namespace`    | Deployment and ConfigMap deployed namespace                   | `default`  | true |
-| `configmap.name`    | ConfigMap name contains the entry files                   | `entry`  | true |
-| `image.repository` | Global Dockevr registry | `zai7lou/bilibili_tool_pro`  | true |
-| `image.tag`     | Image Tag    | `1.0.1`  | true |
-| `image.pullPolicy`     | Image Pull Policy    | `IfNotPresent`  | true |
-| `imagePullSecrets` | Image Pull Secrets | `[]` | false |
-| `nameOverride` | Deployment name in the Chart | `""` | false |
-| `fullnameOverride` | Release name when set | `""` | false |
-| `resources.limits`      | The resources limits for the BiliBili Tool containers                                 | `{}`            | true |
-| `resources.limits.memory`                         | The limited memory for the BiliBili Tool containers                                                                                                                                                 | `180Mi`         | true |
-| `resources.limits.cpu`                            | The limited cpu for the BiliBili Tool containers     | `100m` | true |
-| `resources.requests`      | The resources requests for the BiliBili Tool containers                                                                                                       | `{}`            | true |
-| `resources.requests.memory`                         | The requested memory for the BiliBili Tool containers                                                                                                                                                 | `180Mi`         | true |
-| `resources.requests.cpu`                            | The requested cpu for the BiliBili Tool containers     | `100m` | true |
-| `affinity`                                          | Affinity for pod assignment                                                                                                                                                                       | `{}`            | false |
-| `nodeSelector`                                      | Node labels for pod assignment                                                                                                                                                                    | `{}`            | false |
-| `tolerations`                                       | Tolerations for pod assignment                                                                                                                                                                    | `[]`            | false |
-| `env` | Environment variables for the BiliBili Tool container, Ray_BiliBiliCookies__1 and Ray_DailyTaskConfig__Cron are required, others vars pls take a look at [supported envvars](https://github.com/ZzzHe2333/BiliBiliToolPro/blob/main/docs/configuration.md) | `[]` | true |
-| `volumes.log.enabled` | Enable persistent log volume for BiliBili Tool or not | `"false"` | true |
-| `volumes.log.path` | The host path mounted into pod | `"/tmp/Logs"` | false |
-| `volumes.log.name` | The volume name | `"bili-tool-vol"` | false |
-| `volumes.login.enabled` | Enable persistent log volume contains the entries for BiliBili Tool or not | `"false"` | true |
-| `volumes.login.name` | The volume name | `"entry"` | false |
-| `podAnnotations` | The annotations for the BiliBili Tool pod | `{}` | false |
+推荐部署后通过 Web 扫码添加账号；也可以通过你自己的 values 文件传入环境变量：
 
-可以用指定helm install命令行参数 `--set key=value[,key=value]`， 比如
-
-```console
-$ helm install my-release \
-  --set  \
-    relicas=1
+```yaml
+env:
+  - name: TZ
+    value: "Asia/Shanghai"
+  - name: BiliBiliCookies__1
+    value: "<COOKIE>"
+  - name: DailyTaskConfig__Cron
+    value: "0 0 15 * * ?"
 ```
 
-也可以通过指定一个YAML格式的values文件来配置以上参数，比如
+不要把真实 Cookie 提交到 Git 仓库。
 
-```console
-$helm install my-release -f values.yaml my_chart_repo/bilibili-tool
+Web 项目使用无前缀配置键，例如：
+
+```text
+BiliBiliCookies__1
+DailyTaskConfig__Cron
+Security__RandomSleepMaxMin
 ```
 
-> **Tip**: 你可以使用默认的 [values.yaml](bilibili-tool/values.yaml)进行配置
+青龙专用的 `Zzz_*` 严格隔离约定不适用于 Web Chart。
 
-当想更新一些变量时，可以通过指定参数或者直接修改YAML的values文件进行更新
+## 对外暴露服务
 
-```console
-$helm upgrade my-release my_chart_repo/bilibili-tool <-f values> or <--set-file ...> 
+默认：
+
+```yaml
+service:
+  type: ClusterIP
+  port: 8080
 ```
 
-## Upgrade
+可以按集群环境改成 `NodePort` 或 `LoadBalancer`：
 
-建议重新装release
-
-## [Optional]本地Cluster运行
-
-通过安装[kind](https://kind.sigs.k8s.io/docs/user/quick-start/)工具在本地运行一个Kubernetes Cluster
-
-go 1.17+ and Docker installed
-
-```console
-$ go install sigs.k8s.io/kind@v0.17.0 && kind create cluster <--config kind_config_file>
-$ cat <kind_config_file>
-$ kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-nodes:
-- role: control-plane
-- role: worker 
-$ EOF
+```bash
+helm upgrade --install bilitool ./helm/bilibili-tool \
+  --set service.type=LoadBalancer
 ```
 
-at least one worker node otherwise you have to provides tolerations in the values.yaml to schedule on master node
+## 持久化
+
+默认不绑定宿主机目录。需要保存日志/配置时，可在自己的 values 文件中启用：
+
+```yaml
+persistence:
+  logs:
+    enabled: true
+    hostPath: /srv/bilitool/logs
+  config:
+    enabled: true
+    hostPath: /srv/bilitool/config
+```
+
+挂载位置分别为：
+
+```text
+/app/Logs
+/app/config
+```
+
+## 更新
+
+```bash
+git pull
+helm upgrade bilitool ./helm/bilibili-tool
+```
+
+默认 `image.pullPolicy=Always`，使用 `latest` 时会拉取本仓库最新 Web 镜像。
+
+## 默认关闭任务
+
+`LiveLottery`、`Silver2Coin`、`UnfollowBatched` 在程序默认配置中关闭。当前 Helm Chart 不再自行生成任何 Console cron，因此不会额外把这些功能打开。
+
+## 关于旧 Krew 插件
+
+仓库曾包含一套 `kubectl bilipro` Krew 插件，它绑定早期 Console 容器并直接在 Pod 中执行 `Ray.BiliBiliTool.Console.dll`。当前正式镜像已经是 Web 架构，因此该旧插件已从仓库移除。Kubernetes 部署统一使用本 Helm Chart。

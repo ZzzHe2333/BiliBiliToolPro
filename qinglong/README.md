@@ -1,36 +1,22 @@
-# 在青龙中运行
+# 青龙部署
 
-本 fork 支持通过青龙面板的 **订阅管理** 直接拉取，无需手动创建 `ql repo` 定时任务。
+本项目支持通过青龙面板的 **订阅管理** 直接拉取。青龙专用任务使用 `Zzz-Bili` 名称和 `Zzz_*` 环境变量，并启用严格配置隔离。
 
-仓库地址：
+仓库：
 
 ```text
 https://github.com/ZzzHe2333/BiliBiliToolPro.git
 ```
 
-为避免与 `RayWangQvQ/BiliBiliToolPro` 在同一个青龙面板中冲突，本 fork 提供独立的 `Zzz-Bili` 订阅任务，并优先读取 `Zzz_` 前缀环境变量。
+## 1. 新建订阅
 
-## 1. 订阅管理直接部署
-
-### 1.1. 确认 Shell 文件可被订阅
-
-如果你的青龙版本仍使用 `RepoFileExtensions` 配置，请在青龙面板 `配置文件` 中确保包含 `sh`，例如：
-
-```bash
-RepoFileExtensions="js py sh"
-```
-
-新版青龙如果在订阅管理中已经有“文件后缀”字段，直接填写 `sh` 即可。
-
-### 1.2. 新建订阅
-
-进入：
+青龙面板：
 
 ```text
-青龙面板 -> 订阅管理 -> 新建订阅
+订阅管理 -> 新建订阅
 ```
 
-填写：
+推荐填写：
 
 ```text
 名称：Zzz-BiliBiliToolPro
@@ -43,153 +29,114 @@ RepoFileExtensions="js py sh"
 文件后缀：sh
 ```
 
-其余项目留空即可，**不需要再创建 `ql repo` 命令**。
+其余项目留空即可。新版青龙直接使用“文件后缀”字段；旧版如果仍使用 `RepoFileExtensions`，请确保其中包含 `sh`。
 
-保存后点击该订阅的“运行/立即执行”。青龙会拉取仓库，并根据脚本头部的 cron 自动建立 `Zzz-Bili ...` 定时任务。
-
-订阅专用任务位于：
+保存后执行一次订阅，青龙会从：
 
 ```text
 qinglong/SubscriptionTasks/
 ```
 
-当前会创建：
+建立 `Zzz-Bili ...` 定时任务。
+
+## 2. 当前订阅任务
+
+当前会生成：
 
 - `Zzz-Bili 每日任务`
 - `Zzz-Bili 免费B币券充电任务`
+- `Zzz-Bili 测试Cookie`
 - `Zzz-Bili 扫码登录`
 - `Zzz-Bili 直播粉丝牌`
-- `Zzz-Bili 天选时刻`
 - `Zzz-Bili 漫画任务`
 - `Zzz-Bili 领取大会员漫画权益任务`
-- `Zzz-Bili 银瓜子兑换硬币任务`
-- `Zzz-Bili 批量取关主播`
 - `Zzz-Bili 大会员大积分`
 - `Zzz-Bili 领取大会员福利任务`
 
-`zzz_bili_task_base.sh` 也会随订阅拉取，但它没有 cron/new Env 元数据，因此不会生成独立定时任务。
+以下功能代码仍保留，但本项目默认关闭，并且订阅目录**没有**对应定时任务脚本：
 
-## 2. 与原版在同一个青龙面板共存
+- `LiveLottery` 天选时刻
+- `Silver2Coin` 银瓜子兑换硬币
+- `UnfollowBatched` 批量取关
 
-原版建议继续使用：
+## 3. 严格配置隔离
 
-```text
-Ray_*
-```
-
-本 fork 建议使用：
-
-```text
-Zzz_*
-```
-
-例如：
+订阅公共脚本会设置：
 
 ```bash
+Zzz_IsolatedMode=true
+```
+
+在该模式下，Console 的业务配置只从 `Zzz_*` 环境变量加载，并跳过本地 `cookies.json`。因此：
+
+- 不读取 `Ray_*` 业务配置；
+- 不读取无前缀业务环境变量；
+- 不读取 `cookies.json`；
+- `DOTNET_*` 等系统运行时环境变量不受影响。
+
+旧的 `Ray_*` 兼容逻辑只保留给非严格模式，不建议用于本项目青龙订阅。
+
+## 4. Cookie 与多账号
+
+使用：
+
+```bash
+Zzz_BiliBiliCookies__0=<COOKIE>
 Zzz_BiliBiliCookies__1=<COOKIE>
-Zzz_ChargeTaskConfig__IsEnable=true
-Zzz_ChargeTaskConfig__AutoChargeUpId=18461303
-Zzz_ChargeTaskConfig__ChargeComment=""
+Zzz_BiliBiliCookies__2=<COOKIE>
 ```
 
-程序仍兼容旧的 `Ray_` 和无前缀环境变量，但 `Zzz_` 最后加载，因此本 fork 中 `Zzz_` 的值优先级更高。
+`Zzz-Bili 测试Cookie` 可以用于快速确认当前严格模式实际加载了几个账号。
 
-同一青龙面板中推荐：
-
-```text
-原版 RayWangQvQ/BiliBiliToolPro -> Ray_*
-本 fork ZzzHe2333/BiliBiliToolPro -> Zzz_*
-```
-
-这样 Cookie、充电目标、推送参数以及绝大多数业务配置可以分别维护。
-
-## 3. 配置青龙 ClientId / ClientSecret（可选）
-
-如果希望扫码登录成功后自动将 Cookie 写回青龙环境变量，需要在：
-
-```text
-青龙 -> 系统设置 -> 应用设置
-```
-
-创建 Application，然后在环境变量中添加：
+扫码登录后如需自动写回青龙环境变量，在青龙应用设置中创建 OpenAPI Application，然后配置：
 
 ```text
 Zzz_QingLongConfig__ClientId
 Zzz_QingLongConfig__ClientSecret
 ```
 
-本 fork 扫码登录后的 Cookie 会保存为：
+扫码登录只维护 `Zzz_BiliBiliCookies__*`。
 
-```text
-Zzz_BiliBiliCookies__0
-Zzz_BiliBiliCookies__1
-Zzz_BiliBiliCookies__2
-...
-```
+## 5. B 币券充电
 
-不会去更新原版使用的 `Ray_BiliBiliCookies__*`。
-
-如果没有配置 Application，程序会在日志中提示需要手动添加的 `Zzz_BiliBiliCookies__*` 变量。
-
-## 4. Bili 登录
-
-订阅运行完成后，在青龙“定时任务”中找到：
-
-```text
-Zzz-Bili 扫码登录
-```
-
-点击运行，根据日志扫描二维码即可。
-
-首次执行任务时会自动检查/安装运行环境，可能比后续执行耗时更长。
-
-## 5. 充电配置
-
-全局充电目标：
+全局配置：
 
 ```bash
 Zzz_ChargeTaskConfig__IsEnable=true
 Zzz_ChargeTaskConfig__AutoChargeUpId=18461303
+Zzz_ChargeTaskConfig__ChargeComment=""
 ```
 
-按 B 站 UID 单独配置：
+按账号 UID 单独配置：
 
 ```bash
 Zzz_ChargeTaskConfig__Accounts__<B站UID>__IsEnable=true
 Zzz_ChargeTaskConfig__Accounts__<B站UID>__AutoChargeUpId=18461303
 ```
 
-未设置充电目标、目标为空或目标为 `-1` 时，本 fork 最终兜底 UID 为：
+当账号配置未指定目标时，会继承全局配置；目标为空或为 `-1` 时，本项目最终兜底 UID 为 `18461303`。
 
-```text
-18461303
-```
+`Zzz_ChargeTaskConfig__ChargeComment` 留空时会优先调用一言 API；调用失败时回退到内置随机留言。
 
-`Zzz_ChargeTaskConfig__ChargeComment` 留空时，会优先从一言 API 获取留言；请求失败时回退到程序内置随机留言。
-
-## 6. 订阅中的任务时间
-
-订阅脚本当前默认 cron：
+## 6. 默认 Cron
 
 | 任务 | Cron |
 | --- | --- |
 | 每日任务 | `0 9 * * *` |
 | 免费 B 币券充电 | `0 12 * * *` |
 | 直播粉丝牌 | `5 0 * * *` |
-| 天选时刻 | `0 13 * * *` |
 | 漫画任务 | `0 14 * * *` |
 | 漫画权益 | `0 15 * * *` |
-| 银瓜子兑换硬币 | `0 8 * * *` |
-| 批量取关 | `0 12 1 * *` |
 | 大会员大积分 | `7 1 * * *` |
 | 大会员福利 | `0 1 * * *` |
+| 测试 Cookie | `0 0 1 1 *` |
 | 扫码登录 | `0 0 1 1 *` |
 
-青龙最终执行时间以面板中对应定时任务的 Cron 为准，可以直接在面板中修改。
+青龙实际执行时间以面板中的定时任务 Cron 为准。
 
-## 7. fork 专用运行与网络变量
+## 7. 运行模式
 
-默认使用：
+默认：
 
 ```bash
 Zzz_BILI_MODE=dotnet
@@ -202,57 +149,15 @@ dotnet
 bilitool
 ```
 
-GitHub Release 下载代理可单独配置：
-
-```bash
-Zzz_BILI_GITHUB_PROXY=""
-```
-
-### 7.1. 中国大陆包源
-
-本 fork 的主要使用环境是中国大陆，因此青龙首次安装依赖/.NET 时，默认将 Debian/Alpine 官方软件源切换为中科大镜像：
+`bilitool` 模式使用本仓库维护的 `fork-main` 滚动预发布。安装脚本会校验：
 
 ```text
-https://mirrors.ustc.edu.cn
+当前订阅仓库 commit == fork-main 构建记录的 commit
 ```
 
-支持传统 Debian `/etc/apt/sources.list`、Debian 12+ 容器常见的 `/etc/apt/sources.list.d/debian.sources`，以及 Alpine `/etc/apk/repositories`。修改前会保留一次 `.bak` 备份。
+不一致时拒绝运行旧二进制，避免源码已经更新而二进制仍停留在旧版本。
 
-默认等价于：
-
-```bash
-Zzz_BILI_USE_CN_MIRROR=true
-```
-
-如果服务器位于境外、已有自己的软件源，或不希望脚本修改包源，可设置：
-
-```bash
-Zzz_BILI_USE_CN_MIRROR=false
-```
-
-脚本不再通过访问 Google 判断网络地区，避免中国大陆环境下误判或无意义等待。
-
-### 7.2. bilitool 自包含模式
-
-`bilitool` 模式不再读取原版 Release，也不依赖普通版本号 Release。该模式使用本 fork 自动维护的：
-
-```text
-fork-main
-```
-
-滚动预发布。`main` 的程序代码发生变化后，GitHub Actions 会重新构建本 fork 的 Linux 自包含二进制。
-
-青龙安装时会同时校验：
-
-```text
-当前订阅仓库 commit
-==
-fork-main 构建记录的 commit
-```
-
-只有两者完全一致才会安装/运行新二进制。这样不会因为滚动构建尚未完成而误运行旧版 fork，更不会下载原版二进制覆盖本 fork 功能。
-
-支持的青龙运行平台包括：
+支持：
 
 ```text
 linux-x64
@@ -262,76 +167,75 @@ linux-arm
 linux-musl-arm64
 ```
 
-已经安装且 `tag.txt` 中记录的 commit 与当前订阅仓库一致时，不会重复访问 Release 或重复下载。
+## 8. 中国大陆网络
 
-在中国大陆如果 GitHub Release 下载较慢，可给 `Zzz_BILI_GITHUB_PROXY` 配置自己信任的下载代理；滚动构建的版本标记和二进制都会使用该代理前缀。
-
-未设置 `Zzz_BILI_MODE` / `Zzz_BILI_GITHUB_PROXY` / `Zzz_BILI_USE_CN_MIRROR` 时，会兼容读取对应的 `BILI_*` 变量；其中国内包源默认开启。
-
-## 8. GitHub 加速
-
-如果青龙所在服务器访问 GitHub 较慢，可以使用你自己信任的 GitHub 代理。代理服务可用性经常变化，不建议在项目中写死第三方代理地址。
-
-## 9. 常见问题
-
-### 9.1. 订阅成功但没有生成任务
-
-检查：
-
-1. “文件后缀”是否填写 `sh`；
-2. 白名单是否为：
-
-```text
-zzz_bili_task_.+\.sh
-```
-
-3. 订阅日志中是否拉到了 `qinglong/SubscriptionTasks/` 下的脚本；
-4. 青龙是否允许解析 Shell 脚本中的 cron 注释。
-
-### 9.2. 与原版环境变量串了
-
-本 fork 不要再新建 `Ray_BiliBiliCookies__*`，改用：
-
-```text
-Zzz_BiliBiliCookies__*
-```
-
-其他配置同理优先使用 `Zzz_`。
-
-### 9.3. 安装 dotnet 失败
-
-可以改用本 fork 自包含模式：
+软件包源默认优先使用国内镜像：
 
 ```bash
-Zzz_BILI_MODE=bilitool
+Zzz_BILI_USE_CN_MIRROR=true
 ```
 
-如果 `fork-main` 的构建 commit 暂时与当前订阅 commit 不一致，脚本会拒绝运行旧二进制并在日志中明确提示。也可以继续使用默认 `dotnet` 模式。
-
-如果不希望使用默认中国大陆镜像，可设置：
+不需要时可以关闭：
 
 ```bash
 Zzz_BILI_USE_CN_MIRROR=false
 ```
 
-### 9.4. Couldn't find a valid ICU package installed on the system
+GitHub Release 下载代理：
 
-在青龙环境变量中添加：
+```bash
+Zzz_BILI_GITHUB_PROXY=""
+```
+
+项目不会写死第三方 GitHub 代理地址，请仅配置自己信任的代理。
+
+## 9. 任务互斥与通知
+
+所有 `Zzz-Bili` 任务共享源码和构建目录，公共脚本会加互斥锁，避免多个 `dotnet run` 并发造成 PDB/程序集锁冲突。
+
+任务完成后优先使用青龙面板系统通知，并在发送前对 Cookie、Authorization、Token、ClientSecret 等常见敏感字段脱敏。为了避免重复推送，任务运行时会屏蔽应用自身 `Zzz_Serilog__WriteTo__*` 推送配置。
+
+## 10. 常见问题
+
+### 订阅成功但没有生成任务
+
+检查：
+
+1. 文件后缀是否包含 `sh`；
+2. 白名单是否为 `zzz_bili_task_.+\.sh`；
+3. 订阅日志是否拉到了 `qinglong/SubscriptionTasks/`；
+4. 青龙版本是否支持从 Shell 注释解析 cron / Env 元数据。
+
+### 仍然加载到旧账号或旧推送配置
+
+请确认运行的是 `Zzz-Bili ...` 任务，而不是历史 `bili...` 定时任务。严格模式只读取 `Zzz_*`。历史任务如仍留在青龙面板，应停用或删除。
+
+### dotnet 安装失败
+
+可以切换：
+
+```bash
+Zzz_BILI_MODE=bilitool
+```
+
+或检查包源、网络以及 `.NET 8` 运行环境。
+
+### Couldn't find a valid ICU package
+
+可按运行环境需要设置：
 
 ```text
 DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 ```
 
-### 9.5. inotify instances reached
+### inotify instances reached
 
-如果出现：
-
-```text
-The configured user limit (128) on the number of inotify instances has been reached
-```
-
-可以添加：
+可按运行环境需要设置：
 
 ```text
 DOTNET_USE_POLLING_FILE_WATCHER=1
 ```
+
+## 11. 独立仓库说明
+
+本仓库不配置 Repo Sync、Pull App 或其他自动上游同步机制。青龙订阅、滚动二进制和相关下载均指向 `ZzzHe2333/BiliBiliToolPro`。
