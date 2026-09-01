@@ -58,19 +58,17 @@ public static class Constants
         { "--saveCoinsWhenLv6", "DailyTaskConfig:SaveCoinsWhenLv6" },
         { "--selectLike", "DailyTaskConfig:SelectLike" },
         { "--supportUpIds", "DailyTaskConfig:SupportUpIds" },
-        { "--dayOfAutoCharge", "DailyTaskConfig:DayOfAutoCharge" },
-        { "--autoChargeUpId", "DailyTaskConfig:AutoChargeUpId" },
-        { "--dayOfReceiveVipPrivilege", "DailyTaskConfig:DayOfReceiveVipPrivilege" },
-        { "--isExchangeSilver2Coin", "DailyTaskConfig:IsExchangeSilver2Coin" },
+        { "--autoChargeUpId", "ChargeTaskConfig:AutoChargeUpId" },
+        { "--isExchangeSilver2Coin", "Silver2CoinTaskConfig:IsEnable" },
         { "--devicePlatform", "DailyTaskConfig:DevicePlatform" },
         { "--excludeAwardNames", "LiveLotteryTaskConfig:ExcludeAwardNames" },
-        { "--includeAwardNames", "LiveLotteryTaskConfig:INCLUDEAWARDNAMES" },
+        { "--includeAwardNames", "LiveLotteryTaskConfig:IncludeAwardNames" },
         { "--unfollowGroup", "UnfollowBatchedTaskConfig:GroupName" },
         { "--unfollowCount", "UnfollowBatchedTaskConfig:Count" },
         { "--intervalSecondsBetweenRequestApi", "Security:IntervalSecondsBetweenRequestApi" },
         { "--intervalMethodTypes", "Security:IntervalMethodTypes" },
         { "--pushScKey", "Serilog:WriteTo:6:Args:scKey" },
-        { "--proxy", "WebProxy" },
+        { "--proxy", "Security:WebProxy" },
     };
 
     public const string SqliteTableName = "bili_appsettings";
