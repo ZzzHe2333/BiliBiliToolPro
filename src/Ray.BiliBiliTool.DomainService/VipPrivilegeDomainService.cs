@@ -14,7 +14,8 @@ namespace Ray.BiliBiliTool.DomainService;
 public class VipPrivilegeDomainService(
     ILogger<VipPrivilegeDomainService> logger,
     IDailyTaskApi dailyTaskApi,
-    IOptionsMonitor<VipPrivilegeOptions> receiveVipPrivilegeOptions
+    IOptionsMonitor<VipPrivilegeOptions> receiveVipPrivilegeOptions,
+    BCoinCouponStateStore bCoinCouponStateStore
 ) : IVipPrivilegeDomainService
 {
     private readonly VipPrivilegeOptions _vipPrivilegeOptions =
@@ -41,23 +42,20 @@ public class VipPrivilegeDomainService(
             return false;
         }
 
-        /*
-        int targetDay = _dailyTaskOptions.DayOfReceiveVipPrivilege == -1
-            ? 1
-            : _dailyTaskOptions.DayOfReceiveVipPrivilege;
-
-        _logger.LogInformation("【目标领取日期】{targetDay}号", targetDay);
-        _logger.LogInformation("【今天】{day}号", DateTime.Today.Day);
-
-        if (DateTime.Today.Day != targetDay
-            && DateTime.Today.Day != DateTime.Today.LastDayOfMonth().Day)
-        {
-            _logger.LogInformation("跳过");
-            return false;
-        }
-        */
-
         var suc1 = await ReceiveVipPrivilege(VipPrivilegeType.BCoinCoupon, ck);
+        if (suc1)
+        {
+            try
+            {
+                await bCoinCouponStateStore.RecordReceivedAsync(userInfo.Mid);
+                logger.LogInformation("已记录B币券领取时间；自动充电仅会在领取后30天到期前48小时内执行");
+            }
+            catch (Exception ex)
+            {
+                logger.LogError("B币券领取成功，但保存领取时间失败：{msg}", ex.Message);
+            }
+        }
+
         var suc2 = await ReceiveVipPrivilege(VipPrivilegeType.MembershipBenefits, ck);
 
         if (suc1 | suc2)
