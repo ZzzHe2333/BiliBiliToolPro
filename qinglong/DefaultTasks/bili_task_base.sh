@@ -2,12 +2,8 @@
 # cron:0 0 1 1 *
 # new Env("bili_base")
 
-# Stop script on NZEC
 set -e
-# Stop script if unbound variable found (use ${var:-} if intentional)
 set -u
-# By default cmd1 | cmd2 returns exit code of cmd2 regardless of cmd1 success
-# This is causing it to fail
 set -o pipefail
 
 verbose=false                          # 开启debug日志
@@ -16,21 +12,14 @@ bili_branch=""                         # 分支名，空或_develop
 prefer_mode=${BILI_MODE:-"dotnet"}     # dotnet或bilitool，需要通过环境变量配置
 github_proxy=${BILI_GITHUB_PROXY:-""}  # 下载github release包时使用的代理，会拼在地址前面，需要通过环境变量配置
 use_cn_mirror=${BILI_USE_CN_MIRROR:-"true"} # 本fork主要面向中国大陆，默认使用国内包源
-export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 # 解决抽风问题
+rolling_release_tag="fork-main"
+export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 
-# Use in the the functions: eval $invocation
 invocation='say_verbose "Calling: ${yellow:-}${FUNCNAME[0]} ${green:-}$*${normal:-}"'
 
-# standard output may be used as a return value in the functions
-# we need a way to write text on the screen in the functions so that
-# it won't interfere with the return value.
-# Exposing stream 3 as a pipe to standard output of the script itself
 exec 3>&1
 
-# Setup some colors to use. These need to work in fairly limited shells, like the Ubuntu Docker container where there are only 8 colors.
-# See if stdout is a terminal
 if [ -t 1 ] && command -v tput >/dev/null; then
-    # see if it supports colors
     ncolors=$(tput colors || echo 0)
     if [ -n "$ncolors" ] && [ $ncolors -ge 8 ]; then
         bold="$(tput bold || echo)"
@@ -87,8 +76,6 @@ say "bili仓库目录: $qinglong_bili_repo_dir"
 current_linux_os="debian"
 current_os="linux"
 machine_architecture="x64"
-
-bilitool_installed_version=0
 
 cd $qinglong_bili_repo_dir
 mkdir -p bin && cd $qinglong_bili_repo_dir/bin
@@ -242,22 +229,6 @@ check_os() {
     say "当前选择的运行方式：$prefer_mode"
 }
 
-check_jq() {
-    if [ "$current_linux_os" = "debian" ]; then
-        if ! machine_has jq; then
-            say "jq未安装，开始安装依赖..."
-            apt-get update
-            apt-get install -y jq
-        fi
-    else
-        if ! machine_has jq; then
-            say "jq未安装，开始安装依赖..."
-            apk update
-            apk add -y jq
-        fi
-    fi
-}
-
 check_unzip() {
     if [ "$current_linux_os" = "debian" ]; then
         if ! machine_has unzip; then
@@ -277,6 +248,11 @@ check_unzip() {
 check_dotnet() {
     eval $invocation
 
+    if ! machine_has dotnet; then
+        say "dotnet未安装"
+        return 1
+    fi
+
     dotnetVersion=$(dotnet --version)
     say "当前dotnet版本：$dotnetVersion"
     if [[ $(echo "$dotnetVersion" | grep -oE '^[0-9]+') -ge 8 ]]; then
@@ -284,56 +260,16 @@ check_dotnet() {
         say "which dotnet: $(which dotnet)"
         return 0
     else
-        say "未安装"
+        say "dotnet版本低于8"
         return 1
     fi
-}
-
-check_bilitool() {
-    eval $invocation
-
-    TAG_FILE="./tag.txt"
-    touch $TAG_FILE
-    local STORED_TAG=$(cat $TAG_FILE 2>/dev/null)
-
-    if [[ -z $STORED_TAG ]]; then
-        say "tag.txt为空，未安装过"
-        return 1
-    fi
-
-    say "tag.txt记录的版本：$STORED_TAG"
-
-    if [ -f "./Ray.BiliBiliTool.Console" ]; then
-        say "bilitool已安装"
-        bilitool_installed_version=$STORED_TAG
-        return 0
-    else
-        say "bilitool未安装"
-        return 1
-    fi
-}
-
-check_installed() {
-    eval $invocation
-
-    if [ "$prefer_mode" == "dotnet" ]; then
-        check_dotnet
-        return $?
-    fi
-
-    if [ "$prefer_mode" == "bilitool" ]; then
-        check_bilitool
-        return $?
-    fi
-
-    return 1
 }
 
 install_dotnet_by_script() {
     eval $invocation
 
     say "再尝试使用官方脚本安装"
-    curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 8.0 --verbose
+    curl -fL --retry 3 --connect-timeout 10 https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 8.0 --verbose
 
     say "添加到PATH"
     local exportFile="/root/.bashrc"
@@ -373,64 +309,122 @@ install_dotnet() {
     return $?
 }
 
-get_download_url() {
-    eval $invocation
-
-    tag=$1
-    url="${github_proxy}https://github.com/ZzzHe2333/BiliBiliToolPro/releases/download/$tag/bilibili-tool-pro-v$tag-$current_os-$machine_architecture.zip"
-    say "下载地址：$url"
-    echo $url
-    return 0
+get_rolling_release_url() {
+    local file_name=$1
+    local url="${github_proxy}https://github.com/ZzzHe2333/BiliBiliToolPro/releases/download/${rolling_release_tag}/${file_name}"
+    echo "$url"
 }
 
 install_bilitool() {
     eval $invocation
 
-    say "开始安装bilitool"
-    LATEST_RELEASE=$(curl -s https://api.github.com/repos/$bili_repo/releases/latest)
+    local source_sha
+    local built_sha
+    local stored_sha=""
+    local marker_file
+    local marker_url
+    local asset_name
+    local asset_url
+    local zip_file_name
 
-    check_jq
-    LATEST_TAG=$(echo $LATEST_RELEASE | jq -r '.tag_name')
-    say "最新版本：$LATEST_TAG"
-
-    if [ "$LATEST_TAG" != "$bilitool_installed_version" ]; then
-        ASSET_URL=$(get_download_url $LATEST_TAG)
-        local zip_file_name="bilitool-$LATEST_TAG.zip"
-        curl -L -o "$zip_file_name" $ASSET_URL
-
-        check_unzip
-        unzip -jo "$zip_file_name" -d ./ &&
-            rm "$zip_file_name" &&
-            rm -f appsettings.*
-
-        echo $LATEST_TAG >./tag.txt
-    else
-        say "已经是最新版本，无需下载。"
+    source_sha="$(git -C "$qinglong_bili_repo_dir" rev-parse HEAD 2>/dev/null || true)"
+    if [ -z "$source_sha" ]; then
+        say_err "无法获取当前订阅仓库commit，拒绝安装无法校验版本的bilitool二进制"
+        return 1
     fi
+
+    if [ -f ./tag.txt ]; then
+        stored_sha="$(tr -d '\r\n ' < ./tag.txt)"
+    fi
+
+    if [ -f ./Ray.BiliBiliTool.Console ] && [ "$stored_sha" = "$source_sha" ]; then
+        say "bilitool二进制与当前订阅commit一致：$source_sha"
+        return 0
+    fi
+
+    marker_file="$(mktemp /tmp/zzz-bilitool-commit.XXXXXX)"
+    marker_url="$(get_rolling_release_url fork-main-commit.txt)"
+    say "检查fork滚动构建版本"
+
+    if ! curl -fL --retry 3 --connect-timeout 10 -o "$marker_file" "$marker_url"; then
+        rm -f "$marker_file"
+        say_err "无法下载fork滚动构建版本标记"
+        return 1
+    fi
+
+    built_sha="$(tr -d '\r\n ' < "$marker_file")"
+    rm -f "$marker_file"
+
+    if [ -z "$built_sha" ]; then
+        say_err "fork滚动构建版本标记为空"
+        return 1
+    fi
+
+    if [ "$built_sha" != "$source_sha" ]; then
+        say_err "fork滚动构建尚未对应当前订阅commit"
+        say_err "当前源码：$source_sha"
+        say_err "当前滚动构建：$built_sha"
+        say_err "为避免运行旧版二进制，本次停止；可切换 Zzz_BILI_MODE=dotnet"
+        return 1
+    fi
+
+    asset_name="bilibili-tool-pro-fork-main-${current_os}-${machine_architecture}.zip"
+    asset_url="$(get_rolling_release_url "$asset_name")"
+    zip_file_name="bilitool-${source_sha}.zip"
+
+    say "下载与当前fork commit一致的自包含二进制：$asset_name"
+    if ! curl -fL --retry 3 --connect-timeout 10 -o "$zip_file_name" "$asset_url"; then
+        rm -f "$zip_file_name"
+        say_err "下载fork自包含二进制失败"
+        return 1
+    fi
+
+    check_unzip
+    if ! unzip -jo "$zip_file_name" -d ./; then
+        rm -f "$zip_file_name"
+        say_err "解压fork自包含二进制失败"
+        return 1
+    fi
+    rm -f "$zip_file_name"
+    rm -f appsettings.*
+
+    if [ ! -f ./Ray.BiliBiliTool.Console ]; then
+        say_err "压缩包中未找到Ray.BiliBiliTool.Console"
+        return 1
+    fi
+
+    chmod +x ./Ray.BiliBiliTool.Console
+    echo "$source_sha" > ./tag.txt
+    say "bilitool安装/更新成功，commit：$source_sha"
 }
 
 install() {
     eval $invocation
 
-    if check_installed; then
-        say "环境正常，本次无需安装"
-    else
-        say "开始安装环境"
-        if [ "$prefer_mode" == "dotnet" ]; then
-            install_dotnet || {
-                say_err "安装失败"
-                say_err "请根据文档自行在青龙容器中安装dotnet：https://learn.microsoft.com/zh-cn/dotnet/core/install/linux-$current_linux_os"
-                say_err "或者尝试切换运行模式为bilitool，它不需要安装dotnet：https://github.com/ZzzHe2333/BiliBiliToolPro/blob/main/qinglong/README.md"
-            }
+    if [ "$prefer_mode" == "dotnet" ]; then
+        if check_dotnet; then
+            say "环境正常，本次无需安装"
+            return 0
         fi
 
-        if [ "$prefer_mode" == "bilitool" ]; then
-            install_bilitool || {
-                say_err "安装失败，请检查日志并重试"
-                say_err "或者尝试切换运行模式为dotnet：https://github.com/ZzzHe2333/BiliBiliToolPro/blob/main/qinglong/README.md"
-            }
-        fi
+        say "开始安装dotnet环境"
+        install_dotnet || {
+            say_err "dotnet安装失败"
+            return 1
+        }
+        return 0
     fi
+
+    if [ "$prefer_mode" == "bilitool" ]; then
+        install_bilitool || {
+            say_err "bilitool安装/更新失败"
+            return 1
+        }
+        return 0
+    fi
+
+    say_err "未知运行方式：$prefer_mode，仅支持 dotnet 或 bilitool"
+    return 1
 }
 
 run_task() {
