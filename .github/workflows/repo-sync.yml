@@ -55,7 +55,7 @@ jobs:
           if ! git merge --no-ff --no-edit upstream/main; then
             echo "::error::上游 main 与当前 fork main 存在合并冲突。main 未被修改，请人工处理。"
             echo "### 上游同步失败" >> "$GITHUB_STEP_SUMMARY"
-            echo "- 上游 commit: \`$upstream_sha\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- 上游 commit: $upstream_sha" >> "$GITHUB_STEP_SUMMARY"
             echo "- 原因: 与 fork 定制代码存在 Git merge 冲突" >> "$GITHUB_STEP_SUMMARY"
             git merge --abort || true
             exit 1
@@ -64,7 +64,7 @@ jobs:
           if git diff --quiet origin/main HEAD --; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "### 上游无需要同步的文件变化" >> "$GITHUB_STEP_SUMMARY"
-            echo "- 上游 commit: \`$upstream_sha\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- 上游 commit: $upstream_sha" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -72,8 +72,8 @@ jobs:
           git push --force origin "$sync_branch"
 
           echo "### 已生成上游同步候选分支" >> "$GITHUB_STEP_SUMMARY"
-          echo "- 分支: \`$sync_branch\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- 上游 commit: \`$upstream_sha\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 分支: $sync_branch" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 上游 commit: $upstream_sha" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create or update upstream sync PR
         if: steps.merge.outputs.changed == 'true'
@@ -87,13 +87,13 @@ jobs:
           sync_branch="sync/upstream-main"
           title="chore: review upstream main updates"
           body=$(cat <<EOF
-          自动检测到原项目 `RayWangQvQ/BiliBiliToolPro` 的 `main` 有新变化。
+          自动检测到原项目 RayWangQvQ/BiliBiliToolPro 的 main 有新变化。
 
-          上游 commit：`$UPSTREAM_SHA`
+          上游 commit：$UPSTREAM_SHA
 
-          此 PR **不会自动合并**。请人工检查是否会影响本 fork 的：
+          此 PR 不会自动合并。请人工检查是否会影响本 fork 的：
 
-          - `Zzz_*` 青龙隔离配置
+          - Zzz_* 青龙隔离配置
           - B 币券临期保护
           - 青龙系统通知与敏感信息脱敏
           - 中国大陆安装/镜像逻辑
