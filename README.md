@@ -69,7 +69,7 @@ BiliTool
 <!-- /TOC -->
 
 ---
-**Github 仓库地址：[RayWangQvQ/BiliBiliToolPro](https://github.com/RayWangQvQ/BiliBiliToolPro)**
+**Github 仓库地址：[RayWangQvQ/BiliBiliToolPro](https://github.com/ZzzHe2333/BiliBiliToolPro)**
 
 **注意：**
 
