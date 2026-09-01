@@ -248,8 +248,7 @@ public class LoginDomainService(
                 throw new Exception($"查询环境变量失败：{qlEnvList.ToJsonStr()}");
             }
 
-            logger.LogDebug(qlEnvList.Data.ToJsonStr());
-            logger.LogDebug(ckInfo.ToString());
+            logger.LogDebug("查询到 {count} 个 Zzz Cookie 环境变量", qlEnvList.Data.Count);
 
             var list = qlEnvList
                 .Data.Where(x => x.name.StartsWith(QingLongCookieEnvPrefix))
@@ -432,9 +431,25 @@ public class LoginDomainService(
 
     private Task PrintIfSaveCookieFailAsync(BiliCookie ckInfo, CancellationToken cancellationToken)
     {
-        logger.LogError("持久化失败，青龙版本高于2.18，请手动添加环境变量到青龙");
-        logger.LogWarning("变量Key：{key}", $"{QingLongCookieEnvPrefix}0");
-        logger.LogWarning("变量值：{value}", ckInfo.CookieStr);
+        logger.LogError("Cookie持久化失败，未能自动写入青龙环境变量");
+        logger.LogWarning("变量Key示例：{key}", $"{QingLongCookieEnvPrefix}0");
+
+        bool showCookieWhenSaveFails = configuration.GetValue<bool>(
+            "QingLongConfig:ShowCookieWhenSaveFails"
+        );
+        if (showCookieWhenSaveFails)
+        {
+            logger.LogWarning("已显式开启敏感信息输出，仅用于手工复制；请勿分享本段日志");
+            logger.LogWarning("变量值：{value}", ckInfo.CookieStr);
+        }
+        else
+        {
+            logger.LogWarning("为防止Cookie泄露，默认不输出完整变量值");
+            logger.LogWarning(
+                "如确需手工复制，可临时设置 Zzz_QingLongConfig__ShowCookieWhenSaveFails=true 后重新扫码；完成后请立即删除或关闭该变量"
+            );
+        }
+
         logger.LogWarning(
             $"如果Key已存在，请自行+1，如{QingLongCookieEnvPrefix}1，{QingLongCookieEnvPrefix}2..."
         );

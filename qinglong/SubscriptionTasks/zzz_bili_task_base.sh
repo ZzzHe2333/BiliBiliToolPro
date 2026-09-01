@@ -67,6 +67,26 @@ const qlDataDir = (process.env.QL_DATA_DIR || path.join(qlDir, 'data')).replace(
 const statusText = taskStatus === 0 ? '成功' : `失败(${taskStatus})`;
 const title = `Zzz-Bili ${targetCode} - ${statusText}`;
 
+function redactSensitiveContent(content) {
+  // B站 Cookie 常见敏感字段。无论它们出现在普通文本、JSON value 还是整段 Cookie 中，
+  // 只保留字段名，不把真实值带到任何外部通知渠道。
+  content = content.replace(
+    /\b(SESSDATA|bili_jct|DedeUserID__ckMd5|DedeUserID|sid|buvid3|buvid4|buvid_fp|buvid_fp_plain|b_nut|b_lsid|_uuid|ac_time_value|access_key|bili_ticket)\s*=\s*([^;\s"'<>]+)/gi,
+    '$1=[已隐藏]'
+  );
+
+  // 青龙环境变量整行、HTTP Cookie/Authorization 头以及常见 token/密钥。
+  content = content.replace(/(Zzz_BiliBiliCookies__\d+\s*[:=]\s*)[^\r\n]+/gi, '$1[已隐藏]');
+  content = content.replace(/((?:Cookie|Set-Cookie|Authorization)\s*[:=]\s*)[^\r\n]+/gi, '$1[已隐藏]');
+  content = content.replace(
+    /("(?:access_token|refresh_token|client_secret|ClientSecret|ClientId|qrcode_key)"\s*:\s*")[^"]*(")/gi,
+    '$1[已隐藏]$2'
+  );
+  content = content.replace(/\b((?:access_token|refresh_token|client_secret|qrcode_key)=)[^&\s]+/gi, '$1[已隐藏]');
+
+  return content;
+}
+
 function prepareContent() {
   let content = '';
   try {
@@ -86,6 +106,9 @@ function prepareContent() {
     const lineStart = content.lastIndexOf('\n', markerIndex);
     content = content.slice(lineStart >= 0 ? lineStart + 1 : markerIndex);
   }
+
+  // 在任何通知发送、截断之前先脱敏，防止敏感字段进入系统通知或环境变量兜底通知。
+  content = redactSensitiveContent(content);
 
   content = content.trim();
   if (!content) content = `任务执行结束，退出码：${taskStatus}`;
