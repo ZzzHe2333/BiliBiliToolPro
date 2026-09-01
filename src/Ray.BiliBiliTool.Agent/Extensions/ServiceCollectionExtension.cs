@@ -164,7 +164,7 @@ public static class ServiceCollectionExtension
         NetworkCredential? credentials = null;
 
         // 优先解析标准URI，例如 http://user:pass@host:port。
-        if (TryCreateProxyUri(endpoint, out Uri? standardUri))
+        if (TryCreateProxyUri(endpoint, out Uri standardUri))
         {
             if (!string.IsNullOrEmpty(standardUri.UserInfo))
             {
@@ -193,7 +193,7 @@ public static class ServiceCollectionExtension
             endpoint = "http://" + endpoint;
         }
 
-        if (!TryCreateProxyUri(endpoint, out Uri? proxyUri))
+        if (!TryCreateProxyUri(endpoint, out Uri proxyUri))
         {
             throw new FormatException(
                 "代理地址格式无效。请使用 host:port、http://host:port、http://user:pass@host:port 或 user:pass@http://host:port"
@@ -203,7 +203,7 @@ public static class ServiceCollectionExtension
         return CreateWebProxy(proxyUri, credentials);
     }
 
-    private static bool TryCreateProxyUri(string value, out Uri? uri)
+    private static bool TryCreateProxyUri(string value, out Uri uri)
     {
         if (
             Uri.TryCreate(value, UriKind.Absolute, out Uri? candidate)
@@ -218,7 +218,7 @@ public static class ServiceCollectionExtension
             return true;
         }
 
-        uri = null;
+        uri = null!;
         return false;
     }
 
