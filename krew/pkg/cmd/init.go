@@ -18,8 +18,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/RayWangQvQ/BiliBiliToolPro/krew/pkg/options"
-	helper "github.com/RayWangQvQ/BiliBiliToolPro/krew/pkg/utils"
+	"github.com/ZzzHe2333/BiliBiliToolPro/krew/pkg/options"
+	helper "github.com/ZzzHe2333/BiliBiliToolPro/krew/pkg/utils"
 	"sigs.k8s.io/kustomize/api/krusty"
 )
 
