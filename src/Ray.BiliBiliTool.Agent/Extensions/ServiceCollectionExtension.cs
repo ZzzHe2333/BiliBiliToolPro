@@ -139,46 +139,110 @@ public static class ServiceCollectionExtension
     }
 
     /// <summary>
-    /// 设置全局代理(如果配置了代理)
+    /// 设置全局HTTP/HTTPS代理（如果配置了代理）。
+    /// 支持：host:port、http://host:port、http://user:pass@host:port，
+    /// 并兼容历史格式 user:pass@http://host:port。
     /// </summary>
-    /// <param name="services"></param>
-    /// <returns></returns>
     private static IServiceCollection SetGlobalProxy(
         this IServiceCollection services,
         IConfiguration configuration
     )
     {
-        var proxyAddress = configuration["Security:WebProxy"];
-        if (!string.IsNullOrWhiteSpace(proxyAddress))
+        string? proxyAddress = configuration["Security:WebProxy"]?.Trim();
+        if (string.IsNullOrWhiteSpace(proxyAddress))
         {
-            WebProxy webProxy = new WebProxy();
-
-            //user:password@host:port http proxy only .Tested with tinyproxy-1.11.0-rc1
-            if (proxyAddress!.Contains("@"))
-            {
-                string userPass = proxyAddress.Split("@")[0];
-                string address = proxyAddress.Split("@")[1];
-
-                string proxyUser = "";
-                string proxyPass = "";
-                if (userPass.Contains(":"))
-                {
-                    proxyUser = userPass.Split(":")[0];
-                    proxyPass = userPass.Split(":")[1];
-                }
-
-                webProxy.Address = new Uri("http://" + address);
-                webProxy.Credentials = new NetworkCredential(proxyUser, proxyPass);
-            }
-            else
-            {
-                webProxy.Address = new Uri(proxyAddress);
-            }
-
-            HttpClient.DefaultProxy = webProxy;
+            return services;
         }
 
+        HttpClient.DefaultProxy = CreateWebProxy(proxyAddress);
         return services;
+    }
+
+    private static WebProxy CreateWebProxy(string proxyAddress)
+    {
+        string endpoint = proxyAddress.Trim();
+        NetworkCredential? credentials = null;
+
+        // 优先解析标准URI，例如 http://user:pass@host:port。
+        if (TryCreateProxyUri(endpoint, out Uri? standardUri))
+        {
+            if (!string.IsNullOrEmpty(standardUri.UserInfo))
+            {
+                credentials = ParseProxyCredentials(standardUri.UserInfo);
+            }
+
+            var uriBuilder = new UriBuilder(standardUri)
+            {
+                UserName = string.Empty,
+                Password = string.Empty,
+            };
+            return CreateWebProxy(uriBuilder.Uri, credentials);
+        }
+
+        // 兼容旧格式 user:pass@http://host:port；使用最后一个@，避免密码中包含@时切错。
+        int atIndex = endpoint.LastIndexOf('@');
+        if (atIndex > 0 && atIndex < endpoint.Length - 1)
+        {
+            string credentialPart = endpoint[..atIndex];
+            endpoint = endpoint[(atIndex + 1)..];
+            credentials = ParseProxyCredentials(credentialPart);
+        }
+
+        if (!endpoint.Contains("://", StringComparison.Ordinal))
+        {
+            endpoint = "http://" + endpoint;
+        }
+
+        if (!TryCreateProxyUri(endpoint, out Uri? proxyUri))
+        {
+            throw new FormatException(
+                "代理地址格式无效。请使用 host:port、http://host:port、http://user:pass@host:port 或 user:pass@http://host:port"
+            );
+        }
+
+        return CreateWebProxy(proxyUri, credentials);
+    }
+
+    private static bool TryCreateProxyUri(string value, out Uri? uri)
+    {
+        if (
+            Uri.TryCreate(value, UriKind.Absolute, out Uri? candidate)
+            && !string.IsNullOrWhiteSpace(candidate.Host)
+            && (
+                candidate.Scheme.Equals("http", StringComparison.OrdinalIgnoreCase)
+                || candidate.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase)
+            )
+        )
+        {
+            uri = candidate;
+            return true;
+        }
+
+        uri = null;
+        return false;
+    }
+
+    private static NetworkCredential ParseProxyCredentials(string userInfo)
+    {
+        int separatorIndex = userInfo.IndexOf(':');
+        string user = separatorIndex >= 0 ? userInfo[..separatorIndex] : userInfo;
+        string password = separatorIndex >= 0 ? userInfo[(separatorIndex + 1)..] : string.Empty;
+
+        return new NetworkCredential(
+            Uri.UnescapeDataString(user),
+            Uri.UnescapeDataString(password)
+        );
+    }
+
+    private static WebProxy CreateWebProxy(Uri proxyUri, NetworkCredential? credentials)
+    {
+        var webProxy = new WebProxy(proxyUri);
+        if (credentials is not null)
+        {
+            webProxy.Credentials = credentials;
+        }
+
+        return webProxy;
     }
 
     static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
