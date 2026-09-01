@@ -18,18 +18,19 @@ public class ChargeDomainService(
     IOptionsMonitor<ChargeTaskOptions> chargeTaskOptions,
     IDailyTaskApi dailyTaskApi,
     IChargeApi chargeApi,
-    IHttpClientFactory httpClientFactory
+    IHttpClientFactory httpClientFactory,
+    BCoinCouponStateStore bCoinCouponStateStore
 ) : IChargeDomainService
 {
     private const string HitokotoClientName = "Hitokoto";
+    private static readonly TimeSpan AutoChargeWindow = TimeSpan.FromHours(48);
 
     private readonly DailyTaskOptions _dailyTaskOptions = dailyTaskOptions.CurrentValue;
     private readonly ChargeTaskOptions _chargeTaskOptions = chargeTaskOptions.CurrentValue;
     private readonly IDailyTaskApi _dailyTaskApi = dailyTaskApi;
 
     /// <summary>
-    /// 月底自动充电
-    /// 仅充会到期的B币券，低于2的时候不会充
+    /// 自动充电：只处理已记录领取时间、且进入领取后30天到期前48小时窗口的B币券。
     /// </summary>
     public async Task Charge(UserInfo userInfo, BiliCookie ck)
     {
@@ -41,16 +42,55 @@ public class ChargeDomainService(
             return;
         }
 
-        logger.LogInformation("【今天】{today}号", DateTime.Today.Day);
-
         //B币券余额
         decimal couponBalance = userInfo.Wallet?.Coupon_balance ?? 0;
         logger.LogInformation("【B币券】{couponBalance}", couponBalance);
-        if (couponBalance < 2)
+
+        BCoinCouponState? couponState = await bCoinCouponStateStore.GetAsync(userInfo.Mid);
+        if (couponState == null)
         {
-            logger.LogInformation("余额小于2，无法充电");
+            logger.LogWarning("未找到该账号可信的B币券领取时间记录，为避免提前消费，本次不自动充电");
             return;
         }
+
+        await bCoinCouponStateStore.UpdateSeenAsync(userInfo.Mid, couponBalance);
+
+        if (couponState.AutoCharged)
+        {
+            logger.LogInformation("本期B币券已执行过自动充电，跳过");
+            return;
+        }
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        TimeSpan remaining = couponState.ExpireAtUtc - now;
+        DateTimeOffset expireChina = couponState.ExpireAtUtc.ToOffset(TimeSpan.FromHours(8));
+        logger.LogInformation(
+            "【预计到期】{expire:yyyy-MM-dd HH:mm}（北京时间，按领取成功时间+30天计算）",
+            expireChina
+        );
+
+        if (remaining <= TimeSpan.Zero)
+        {
+            logger.LogWarning("领取记录已超过预计30天有效期，为避免使用陈旧状态，本次不自动充电");
+            return;
+        }
+
+        if (remaining > AutoChargeWindow)
+        {
+            logger.LogInformation(
+                "距离预计到期约 {hours:F1} 小时，尚未进入48小时自动充电窗口，跳过",
+                remaining.TotalHours
+            );
+            return;
+        }
+
+        if (couponBalance < 2)
+        {
+            logger.LogInformation("已进入临期窗口，但余额小于2，无法充电");
+            return;
+        }
+
+        logger.LogWarning("B币券已进入到期前48小时窗口，开始自动充电");
 
         //账号级目标优先，未配置时继承全局目标；空值或-1使用fallback值
         string? configuredTargetUpId = _chargeTaskOptions.GetAutoChargeUpIdFor(userInfo.Mid);
@@ -63,7 +103,6 @@ public class ChargeDomainService(
 
         var request = new ChargeRequest(couponBalance, long.Parse(targetUpId), ck.BiliJct);
 
-        //BiliApiResponse<ChargeResponse> response = await _chargeApi.Charge(decimal.ToInt32(couponBalance * 10), _dailyTaskOptions.AutoChargeUpId, _cookieOptions.UserId, _cookieOptions.BiliJct);
         BiliApiResponse<ChargeV2Response> response = await chargeApi.ChargeV2Async(
             request,
             ck.ToString()
@@ -77,6 +116,9 @@ public class ChargeDomainService(
                 logger.LogInformation("【充值个数】 {num}个B币", couponBalance);
                 logger.LogInformation("经验+{exp} √", couponBalance);
                 logger.LogInformation("在过期前使用成功，赠送的B币券没有浪费哦~");
+
+                // 先持久化“已自动充电”，即使后续留言失败也不会让下一次任务误判为未充电。
+                await bCoinCouponStateStore.MarkAutoChargedAsync(userInfo.Mid);
 
                 //充电留言
                 await ChargeComments(response.Data.Order_no, ck);
