@@ -13,7 +13,7 @@ public static class ServiceCollectionExtensions
             client.Timeout = TimeSpan.FromSeconds(5);
         });
 
-        services.AddSingleton<BCoinCouponStateStore>();
+        services.AddSingleton<Ray.BiliBiliTool.DomainService.BCoinCouponStateStore>();
 
         services.Scan(scan =>
             scan.FromAssemblyOf<IAccountDomainService>()
