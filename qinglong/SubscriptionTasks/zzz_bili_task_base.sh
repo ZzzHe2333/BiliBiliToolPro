@@ -20,6 +20,9 @@ if [ -z "$fork_repo_dir" ]; then
   exit 1
 fi
 
+# 开启 fork 专用严格隔离模式：Console 只读取 Zzz_* 业务配置。
+export Zzz_IsolatedMode=true
+
 # fork 可单独设置运行模式/下载代理；未设置时兼容原 BILI_* 变量。
 export BILI_MODE="${Zzz_BILI_MODE:-${BILI_MODE:-dotnet}}"
 export BILI_GITHUB_PROXY="${Zzz_BILI_GITHUB_PROXY:-${BILI_GITHUB_PROXY:-}}"
