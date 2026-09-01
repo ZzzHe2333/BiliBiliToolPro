@@ -2,6 +2,11 @@
 
 public class UnfollowBatchedTaskOptions : BaseConfigOptions
 {
+    public UnfollowBatchedTaskOptions()
+    {
+        IsEnable = false;
+    }
+
     public override string SectionName => "UnfollowBatchedTaskConfig";
     private const string DefaultGroupName = "天选时刻";
 
