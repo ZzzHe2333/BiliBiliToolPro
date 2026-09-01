@@ -64,7 +64,7 @@
     <!-- Other packages - 修复版本兼容性问题 -->
     <PackageVersion Include="Ray.Infrastructure" Version="0.0.26" />
     <PackageVersion Include="Scrutor" Version="6.1.0" />
-    <PackageVersion Include="WebApiClientCore" Version="2.1.5" />
+    <PackageVersion Include="WebApiClientCore" Version="2.1.6" />
     <PackageVersion Include="QRCoder" Version="1.6.0" />
     <PackageVersion Include="MudBlazor" Version="8.6.0" />
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="8.1.4" />
