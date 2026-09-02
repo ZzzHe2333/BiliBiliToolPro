@@ -35,10 +35,11 @@ jobs:
             --configuration Release \
             --filter 'FullyQualifiedName~SensitiveLogRedactorTest'
 
-      - name: Validate Qinglong shell syntax
+      - name: Validate shell syntax
         shell: bash
         run: |
           set -euo pipefail
+          bash -n ./scripts/verify_required_checks.sh
           for file in qinglong/SubscriptionTasks/*.sh qinglong/SubscriptionTasks/*.inc qinglong/DefaultTasks/*.inc; do
             bash -n "$file"
           done
