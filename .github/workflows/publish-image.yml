@@ -35,8 +35,6 @@ on:
       - 'Directory.Packages.props'
       - 'common.props'
       - '.github/workflows/publish-image.yml'
-  release:
-    types: [created]
 
 permissions:
   contents: read
@@ -51,8 +49,6 @@ env:
 
 jobs:
   PublishImage:
-    # fork-main 是青龙 bilitool 的滚动二进制预发布，不属于 Web 容器正式版本。
-    if: ${{ github.event_name != 'release' || github.event.release.tag_name != 'fork-main' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -68,32 +64,22 @@ jobs:
           requested_tag="${{ inputs.imageTag }}"
           publish_latest="false"
 
-          case "$event_name" in
-            push)
-              image_tag="main-${GITHUB_SHA::12}"
-              publish_latest="true"
-              ;;
-            release)
-              image_tag="${{ github.event.release.tag_name }}"
-              publish_latest="true"
-              ;;
-            workflow_call)
-              image_tag="$requested_tag"
-              publish_latest="${{ inputs.publishLatest }}"
-              ;;
-            workflow_dispatch)
-              if [ -n "$requested_tag" ]; then
-                image_tag="$requested_tag"
-              else
-                image_tag="manual-${GITHUB_SHA::12}"
-              fi
-              publish_latest="${{ inputs.publishLatest }}"
-              ;;
-            *)
-              echo "Unsupported event: $event_name" >&2
-              exit 1
-              ;;
-          esac
+          # Reusable workflow calls always provide imageTag. Check it first because
+          # github.event_name remains the caller's event in a called workflow.
+          if [ -n "$requested_tag" ]; then
+            image_tag="$requested_tag"
+            publish_latest="${{ inputs.publishLatest }}"
+          elif [ "$event_name" = "push" ]; then
+            # Ordinary main commits are rolling container builds, not semantic releases.
+            image_tag="main-${GITHUB_SHA::12}"
+            publish_latest="true"
+          elif [ "$event_name" = "workflow_dispatch" ]; then
+            image_tag="manual-${GITHUB_SHA::12}"
+            publish_latest="${{ inputs.publishLatest }}"
+          else
+            echo "Unsupported event without an explicit imageTag: $event_name" >&2
+            exit 1
+          fi
 
           if [[ ! "$image_tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
             echo "Invalid container tag: $image_tag" >&2
