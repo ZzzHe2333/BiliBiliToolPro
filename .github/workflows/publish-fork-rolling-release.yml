@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: fork-rolling-release
@@ -39,6 +40,12 @@ jobs:
             echo "fork-main may only be published from current main: selected=$GITHUB_SHA, main=$main_sha" >&2
             exit 1
           fi
+
+      - name: Wait for required checks
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/verify_required_checks.sh "$GITHUB_SHA"
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v6
