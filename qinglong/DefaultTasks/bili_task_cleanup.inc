@@ -87,8 +87,19 @@ function isRetired(task) {
 }
 
 function preference(task) {
+  const command = String(task.command || '');
   let score = 0;
+
+  // 永远不删除当前正在运行的任务；下一次运行再清掉残留。
   if (Number(task.pid || 0) > 0) score += 1000;
+
+  // 同一逻辑任务重复时，优先保留当前正式 SubscriptionTasks 路径。
+  if (/ZzzHe2333_BiliBiliToolPro[\\/]qinglong[\\/]SubscriptionTasks[\\/]/i.test(command)) {
+    score += 200;
+  } else if (/ZzzHe2333_BiliBiliToolPro_main[\\/]qinglong[\\/]SubscriptionTasks[\\/]/i.test(command)) {
+    score += 100;
+  }
+
   if (Number(task.status || 0) === 0) score += 10;
   return score;
 }
@@ -103,7 +114,7 @@ function preference(task) {
     const id = Number(task.id);
     if (!Number.isInteger(id) || id <= 0) continue;
 
-    // 只允许处理本 fork 的任务，绝不按名字跨仓库清理。
+    // 只允许处理本仓库的任务，绝不按名字跨仓库清理。
     if (!belongsToFork(task)) continue;
 
     if (isRetired(task)) {
@@ -122,6 +133,7 @@ function preference(task) {
     tasks.sort((a, b) => {
       const scoreDiff = preference(b) - preference(a);
       if (scoreDiff !== 0) return scoreDiff;
+      // 只有路径和状态都无差异时才保留更早创建的任务。
       return Number(a.id || 0) - Number(b.id || 0);
     });
     for (const duplicate of tasks.slice(1)) {
@@ -143,7 +155,7 @@ function preference(task) {
     throw new Error(`deleteCrons 返回 code=${code}, message=${result?.message || ''}`);
   }
 
-  console.log(`[Zzz-Bili] 定时任务清理完成：删除 ${ids.length} 条本仓库 DefaultTasks 遗留/重复任务`);
+  console.log(`[Zzz-Bili] 定时任务清理完成：删除 ${ids.length} 条本仓库遗留/重复任务`);
   if (typeof api.close === 'function') api.close();
 })().catch((error) => {
   try {
