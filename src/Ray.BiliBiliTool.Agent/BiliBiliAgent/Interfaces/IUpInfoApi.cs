@@ -12,12 +12,12 @@ namespace Ray.BiliBiliTool.Agent.BiliBiliAgent.Interfaces;
 public interface IUpInfoApi : IBiliBiliApi
 {
     /// <summary>
-    /// 获取用户空间信息
+    /// 获取用户空间信息。账号注销/空间不存在时，B站可能返回业务错误且省略data。
     /// </summary>
     /// <param name="userId">uid</param>
     /// <returns></returns>
     [HttpGet("/x/space/wbi/acc/info")]
-    Task<BiliApiResponse<GetSpaceInfoResponse>> GetSpaceInfo(
+    Task<BiliApiResponseOptionalData<GetSpaceInfoResponse>> GetSpaceInfo(
         [PathQuery] GetSpaceInfoDto request,
         [Header("Cookie")] string ck
     );
