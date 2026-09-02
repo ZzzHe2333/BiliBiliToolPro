@@ -27,6 +27,14 @@ jobs:
           python3 ./scripts/audit_repository.py
           python3 ./scripts/audit_hardening.py
 
+      - name: Validate credential redaction behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet test ./test/BiliAgentTest/BiliAgentTest.csproj \
+            --configuration Release \
+            --filter 'FullyQualifiedName~SensitiveLogRedactorTest'
+
       - name: Validate Qinglong shell syntax
         shell: bash
         run: |
