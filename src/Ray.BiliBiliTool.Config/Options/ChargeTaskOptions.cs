@@ -2,6 +2,12 @@ namespace Ray.BiliBiliTool.Config.Options;
 
 public class ChargeTaskOptions : BaseConfigOptions
 {
+    public ChargeTaskOptions()
+    {
+        // 免费B币券自动使用默认开启；账号级配置仍可显式关闭。
+        IsEnable = true;
+    }
+
     public override string SectionName => "ChargeTaskConfig";
 
     /// <summary>
