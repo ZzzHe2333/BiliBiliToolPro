@@ -41,3 +41,31 @@ elapsed=$(( $(date +%s) - start ))
 grep -Fq '青龙环境变量通知失败：timeout>300ms' <<<"$output"
 
 echo 'Qinglong notification exit regression test passed.'
+
+# Reproduce Qinglong's eval/function-style execution with errexit enabled.
+sim_repo="$tmp_dir/sim-repo"
+mkdir -p "$sim_repo/qinglong/SubscriptionTasks" "$sim_repo/qinglong/DefaultTasks" \
+  "$sim_repo/src/Ray.BiliBiliTool.Console" "$tmp_dir/bin"
+cp "$repo_root/qinglong/SubscriptionTasks/zzz_bili_task_base.inc" "$sim_repo/qinglong/SubscriptionTasks/zzz_bili_task_base.inc"
+cp "$helper" "$sim_repo/qinglong/SubscriptionTasks/zzz_bili_notify.js"
+: > "$sim_repo/qinglong/DefaultTasks/bili_task_cleanup.inc"
+cat > "$sim_repo/qinglong/DefaultTasks/bili_task_base.inc" <<'INC'
+qinglong_bili_repo_dir="$BILI_REPO_DIR"
+prefer_mode=dotnet
+INC
+cat > "$tmp_dir/bin/dotnet" <<'DOTNET'
+#!/usr/bin/env bash
+echo '[00:00:00 INF] BiliBiliToolPro 开始运行...'
+echo '[00:00:01 ERR] simulated partial failure'
+exit 0
+DOTNET
+chmod +x "$tmp_dir/bin/dotnet"
+
+shell_output="$(PATH="$tmp_dir/bin:$PATH" QL_DIR="$tmp_dir/ql" BILI_REPO_DIR="$sim_repo" Zzz_BILI_NOTIFY_TIMEOUT_MS=300 bash -c '
+  set -e
+  eval '\'' . "$BILI_REPO_DIR/qinglong/SubscriptionTasks/zzz_bili_task_base.inc"; run_task "Regression"; status=$?; printf "AFTER_RUN:%s\n" "$status" '\''
+' 2>&1)"
+grep -Fq 'AFTER_RUN:2' <<<"$shell_output"
+! grep -Fq 'pop_var_context' <<<"$shell_output"
+
+echo 'Qinglong errexit/eval regression test passed.'
