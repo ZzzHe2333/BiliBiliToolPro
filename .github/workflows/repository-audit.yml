@@ -35,6 +35,14 @@ jobs:
             --configuration Release \
             --filter 'FullyQualifiedName~SensitiveLogRedactorTest'
 
+      - name: Validate B-coin auto charge defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet test ./test/ConfigTest/ConfigTest.csproj \
+            --configuration Release \
+            --filter 'FullyQualifiedName~ChargeTaskOptionsDefaultTest'
+
       - name: Validate shell syntax
         shell: bash
         run: |
