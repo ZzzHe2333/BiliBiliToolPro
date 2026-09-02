@@ -182,13 +182,13 @@ const statusText = taskStatus === 0 ? '成功' : taskStatus === 2 ? '部分失�
 const title = `Zzz-Bili ${targetCode} - ${statusText}`;
 
 function redactSensitiveContent(content) {
-  // B站 Cookie 单字段：兼容裸值、单/双引号赋值以及 JSON 序列化格式。
+  // B站 Cookie / CSRF 单字段：兼容裸值、单/双引号赋值以及 JSON 序列化格式。
   content = content.replace(
-    /\b(SESSDATA|bili_jct|DedeUserID__ckMd5|DedeUserID|sid|buvid3|buvid4|buvid_fp|buvid_fp_plain|b_nut|b_lsid|_uuid|ac_time_value|access_key|bili_ticket)\s*=\s*(?:"[^"]*"|'[^']*'|[^;\s"'<>]+)/gi,
+    /\b(SESSDATA|bili_jct|csrf|csrf_token|DedeUserID__ckMd5|DedeUserID|sid|buvid3|buvid4|buvid_fp|buvid_fp_plain|b_nut|b_lsid|_uuid|ac_time_value|access_key|bili_ticket)\s*=\s*(?:"[^"]*"|'[^']*'|[^;&\s"'<>]+)/gi,
     '$1=[已隐藏]'
   );
   content = content.replace(
-    /("(?:SESSDATA|bili_jct|DedeUserID__ckMd5|DedeUserID|sid|buvid3|buvid4|buvid_fp|buvid_fp_plain|b_nut|b_lsid|_uuid|ac_time_value|access_key|bili_ticket)"\s*:\s*")[^"]*(")/gi,
+    /("(?:SESSDATA|bili_jct|csrf|csrf_token|DedeUserID__ckMd5|DedeUserID|sid|buvid3|buvid4|buvid_fp|buvid_fp_plain|b_nut|b_lsid|_uuid|ac_time_value|access_key|bili_ticket)"\s*:\s*")[^"]*(")/gi,
     '$1[已隐藏]$2'
   );
 

@@ -60,7 +60,8 @@ const taskDefs = [
 
 function belongsToFork(task) {
   const command = String(task.command || '');
-  return /ZzzHe2333[\\/_-]BiliBiliToolPro/i.test(command);
+  // 只接受本仓库（及历史 _main 目录）的 qinglong 路径；同前缀 backup/test 仓库不属于本项目。
+  return /ZzzHe2333[\\/_-]BiliBiliToolPro(?:_main)?[\\/_-]qinglong[\\/_-]/i.test(command);
 }
 
 function isLegacyDefaultTask(task) {

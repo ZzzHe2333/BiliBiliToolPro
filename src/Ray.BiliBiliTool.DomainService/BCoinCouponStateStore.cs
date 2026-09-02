@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -30,6 +31,10 @@ public sealed class BCoinCouponStateStore(
         WriteIndented = true,
     };
 
+    private static readonly ConcurrentDictionary<long, SemaphoreSlim> AccountGates = new();
+    private static readonly TimeSpan LockRetryDelay = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan LockTimeout = TimeSpan.FromSeconds(30);
+
     public async Task<BCoinCouponState?> GetAsync(long accountUid)
     {
         string path = GetStateFilePath(accountUid);
@@ -48,10 +53,12 @@ public sealed class BCoinCouponStateStore(
         }
     }
 
-    public Task RecordReceivedAsync(long accountUid)
+    public async Task RecordReceivedAsync(long accountUid)
     {
+        using IDisposable accountLock = await AcquireAccountLockAsync(accountUid);
+
         DateTimeOffset now = DateTimeOffset.UtcNow;
-        return SaveAsync(
+        await SaveAsync(
             new BCoinCouponState
             {
                 AccountUid = accountUid,
@@ -65,6 +72,8 @@ public sealed class BCoinCouponStateStore(
 
     public async Task UpdateSeenAsync(long accountUid, decimal balance)
     {
+        using IDisposable accountLock = await AcquireAccountLockAsync(accountUid);
+
         BCoinCouponState? state = await GetAsync(accountUid);
         if (state == null)
             return;
@@ -76,6 +85,8 @@ public sealed class BCoinCouponStateStore(
 
     public async Task MarkAutoChargedAsync(long accountUid)
     {
+        using IDisposable accountLock = await AcquireAccountLockAsync(accountUid);
+
         BCoinCouponState? state = await GetAsync(accountUid);
         if (state == null)
             return;
@@ -85,6 +96,50 @@ public sealed class BCoinCouponStateStore(
         state.LastSeenAtUtc = state.UsedAtUtc;
         state.LastSeenBalance = 0;
         await SaveAsync(state);
+    }
+
+    private async Task<IDisposable> AcquireAccountLockAsync(long accountUid)
+    {
+        SemaphoreSlim gate = AccountGates.GetOrAdd(accountUid, static _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync();
+
+        FileStream? lockStream = null;
+        try
+        {
+            string statePath = GetStateFilePath(accountUid);
+            string directory = Path.GetDirectoryName(statePath)!;
+            Directory.CreateDirectory(directory);
+            string lockPath = statePath + ".lock";
+            DateTime deadline = DateTime.UtcNow.Add(LockTimeout);
+
+            while (true)
+            {
+                try
+                {
+                    lockStream = new FileStream(
+                        lockPath,
+                        FileMode.OpenOrCreate,
+                        FileAccess.ReadWrite,
+                        FileShare.None,
+                        bufferSize: 1,
+                        FileOptions.None
+                    );
+                    break;
+                }
+                catch (IOException) when (DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(LockRetryDelay);
+                }
+            }
+
+            return new AccountLockHandle(gate, lockStream);
+        }
+        catch
+        {
+            lockStream?.Dispose();
+            gate.Release();
+            throw;
+        }
     }
 
     private async Task SaveAsync(BCoinCouponState state)
@@ -129,5 +184,20 @@ public sealed class BCoinCouponStateStore(
         }
 
         return Path.Combine(root, $"bcoin-coupon-{accountUid}.json");
+    }
+
+    private sealed class AccountLockHandle(SemaphoreSlim gate, FileStream lockStream) : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            lockStream.Dispose();
+            gate.Release();
+        }
     }
 }
