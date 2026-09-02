@@ -19,6 +19,8 @@ public class LogFilterAttribute(bool logError = true) : LoggingFilterAttribute
         // WebApiClientCore captures full headers, query strings and bodies. Redact at the
         // common Agent boundary so no Console/Web/serverless sink can persist credentials.
         SensitiveLogRedactor.Redact(logMessage);
+        string safeMessage =
+            SensitiveLogRedactor.Redact(logMessage.ToString()) ?? "[HTTP diagnostic unavailable]";
 
         MethodInfo member = context.ActionDescriptor.Member;
         var strArray = new string?[5];
@@ -34,14 +36,14 @@ public class LogFilterAttribute(bool logError = true) : LoggingFilterAttribute
 
         if (logMessage.Exception == null)
         {
-            logger.LogDebug(logMessage.ToString());
+            logger.LogDebug(safeMessage);
         }
         else
         {
             if (logError)
-                logger.LogError(logMessage.ToString());
+                logger.LogError(safeMessage);
             else
-                logger.LogDebug(logMessage.ToString());
+                logger.LogDebug(safeMessage);
         }
 
         return Task.CompletedTask;
