@@ -16,6 +16,10 @@ public class LogFilterAttribute(bool logError = true) : LoggingFilterAttribute
             return Task.CompletedTask;
         }
 
+        // WebApiClientCore captures full headers, query strings and bodies. Redact at the
+        // common Agent boundary so no Console/Web/serverless sink can persist credentials.
+        SensitiveLogRedactor.Redact(logMessage);
+
         MethodInfo member = context.ActionDescriptor.Member;
         var strArray = new string?[5];
         var declaringType1 = member.DeclaringType;
