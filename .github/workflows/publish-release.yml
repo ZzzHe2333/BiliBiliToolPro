@@ -7,6 +7,10 @@ permissions:
   contents: write
   packages: write
 
+concurrency:
+  group: formal-release
+  cancel-in-progress: false
+
 jobs:
   build:
     name: Publish Release
@@ -86,5 +90,6 @@ jobs:
     uses: ./.github/workflows/publish-image.yml
     with:
       imageTag: ${{ needs.build.outputs.version }}
-      publishLatest: true
+      # latest 始终跟随 main 的滚动镜像；正式 Release 只固化语义版本 tag，避免并发时把 latest 回滚。
+      publishLatest: false
     secrets: inherit
