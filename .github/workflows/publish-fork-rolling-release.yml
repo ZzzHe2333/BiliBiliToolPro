@@ -69,12 +69,13 @@ jobs:
           )
 
           if gh release view fork-main --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            # Release 已存在时不删除，直接覆盖资产；同时把 rolling tag 移到当前 main。
+            # Release 已存在时不删除，直接覆盖资产；同时把 rolling tag 和 Release target 移到当前 main。
             git tag -f fork-main "$GITHUB_SHA"
             git push origin refs/tags/fork-main --force
             gh release upload fork-main "${assets[@]}" --repo "$GITHUB_REPOSITORY" --clobber
             gh release edit fork-main \
               --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
               --title "Fork main rolling build" \
               --notes "Automated self-contained Qinglong build from commit $GITHUB_SHA" \
               --prerelease
