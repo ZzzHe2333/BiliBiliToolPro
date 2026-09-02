@@ -160,6 +160,9 @@ def audit_qinglong_isolation() -> None:
         if fragment in base:
             fail(f"Zzz-Bili must not inherit generic shell helper variable: {fragment}")
 
+    if "bili_jct|csrf|csrf_token" not in base:
+        fail("Qinglong notification redaction must cover csrf and csrf_token")
+
     if 'use_cn_mirror=${BILI_USE_CN_MIRROR:-"false"}' not in common_base:
         fail("Qinglong common base must not modify apt/apk mirrors unless explicitly enabled")
     if "bili_branch" in common_base or "QL_BRANCH" in common_base:
@@ -187,10 +190,36 @@ def audit_qinglong_isolation() -> None:
         fail("Qinglong deduplication must prefer the standard repository task path")
 
 
+def audit_sensitive_logging() -> None:
+    log_filter = read("src/Ray.BiliBiliTool.Agent/Attributes/LogFilterAttribute.cs")
+    redactor = read("src/Ray.BiliBiliTool.Agent/Attributes/SensitiveLogRedactor.cs")
+
+    if "SensitiveLogRedactor.Redact(logMessage);" not in log_filter:
+        fail("WebApiClient diagnostics must be redacted before any log sink receives them")
+
+    for token in ("SESSDATA", "bili_jct", "csrf", "csrf_token", "Authorization"):
+        if token not in redactor:
+            fail(f"HTTP log redactor is missing sensitive token coverage: {token}")
+
+    if "RequestHeaders = Redact" not in redactor or "RequestContent = Redact" not in redactor:
+        fail("HTTP log redactor must sanitize both request headers and request content")
+    if "ResponseHeaders = Redact" not in redactor or "ResponseContent = Redact" not in redactor:
+        fail("HTTP log redactor must sanitize both response headers and response content")
+
+
+def has_main_provenance_guard(content: str) -> bool:
+    return (
+        "Verify main provenance" in content
+        and "git rev-parse origin/main" in content
+        and "GITHUB_SHA" in content
+    )
+
+
 def audit_release_workflows() -> None:
     image = read(".github/workflows/publish-image.yml")
     release = read(".github/workflows/publish-release.yml")
     rolling = read(".github/workflows/publish-fork-rolling-release.yml")
+    scf = read(".github/workflows/auto-deploy-tencent-scf.yml")
 
     if re.search(r"^\s{2}release:\s*$", image, re.M):
         fail("publish-image.yml must not independently react to Release creation")
@@ -200,14 +229,32 @@ def audit_release_workflows() -> None:
         fail("rolling image publication must prevent stale builds from overwriting latest")
     if "DOCKERHUB_" in image or "docker.io/" in image.lower():
         fail("container publishing must not have an implicit DockerHub side channel")
+    manual_latest = re.search(
+        r"workflow_dispatch:.*?publishLatest:.*?default:\s*false",
+        image,
+        re.S,
+    )
+    if not manual_latest:
+        fail("manual image publication must default to not updating latest")
+    if "Verify latest provenance" not in image or "git rev-parse origin/main" not in image:
+        fail("manual latest publication must verify the selected ref is current main")
+
     if "uses: ./.github/workflows/publish-image.yml" not in release:
         fail("formal Release workflow must explicitly publish its matching container image")
     if "Validate release version" not in release:
         fail("formal Release workflow must validate version provenance")
     if "publishLatest: false" not in release:
         fail("formal Release container publication must not race the rolling latest tag")
+    if not has_main_provenance_guard(release):
+        fail("formal Release workflow must only publish current main")
+
     if '--target "$GITHUB_SHA"' not in rolling:
         fail("fork-main Release metadata must track current rolling commit")
+    if not has_main_provenance_guard(rolling):
+        fail("fork-main rolling workflow must only publish current main")
+
+    if not has_main_provenance_guard(scf):
+        fail("Tencent SCF deployment must only deploy current main")
 
 
 def audit_repository_maintenance() -> None:
@@ -226,6 +273,7 @@ def main() -> int:
     audit_detachment()
     audit_solution_items()
     audit_qinglong_isolation()
+    audit_sensitive_logging()
     audit_release_workflows()
     audit_repository_maintenance()
 
