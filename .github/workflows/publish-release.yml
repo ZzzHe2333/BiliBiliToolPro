@@ -41,7 +41,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: ./scripts/verify_required_checks.sh "$GITHUB_SHA"
+        run: bash ./scripts/verify_required_checks.sh "$GITHUB_SHA"
 
       - name: Validate release version
         id: version
