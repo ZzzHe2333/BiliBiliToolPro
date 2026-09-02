@@ -34,6 +34,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Verify main provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          main_sha="$(git rev-parse origin/main)"
+          if [ "$GITHUB_SHA" != "$main_sha" ]; then
+            echo "Tencent SCF deployment may only run from current main: selected=$GITHUB_SHA, main=$main_sha" >&2
+            exit 1
+          fi
 
       - name: Use Node.js 20 LTS
         uses: actions/setup-node@v7
