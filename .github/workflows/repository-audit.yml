@@ -32,6 +32,16 @@ jobs:
             bash -n "$file"
           done
 
-      - name: Check patch whitespace
+      - name: Check changed-file whitespace
         shell: bash
-        run: git diff --check HEAD^
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            base="$(git merge-base HEAD "origin/${{ github.base_ref }}")"
+            git diff --check "$base"...HEAD
+          elif git rev-parse HEAD^ >/dev/null 2>&1; then
+            git diff --check HEAD^ HEAD
+          else
+            git diff --check HEAD
+          fi
