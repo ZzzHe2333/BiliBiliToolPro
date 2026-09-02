@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using WebApiClientCore.Attributes;
 
 namespace Ray.BiliBiliTool.Agent.Attributes;
 
@@ -19,12 +20,12 @@ public static class SensitiveLogRedactor
     );
 
     private static readonly Regex SensitiveJsonRegex = new(
-        $@"(\"(?:Cookie|Set-Cookie|Authorization|{SensitiveNamePattern})\"\s*:\s*\")[^\"]*(\")",
+        "(\"(?:Cookie|Set-Cookie|Authorization|" + SensitiveNamePattern + ")\"\\s*:\\s*\")[^\"]*(\")",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase
     );
 
     private static readonly Regex SensitiveAssignmentRegex = new(
-        $@"(\b(?:{SensitiveNamePattern})\s*=\s*)(?:\"[^\"]*\"|'[^']*'|[^&;\s\"'<>]+)",
+        "(\\b(?:" + SensitiveNamePattern + ")\\s*=\\s*)(?:\"[^\"]*\"|'[^']*'|[^&;\\s\"'<>]+)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase
     );
 
@@ -45,7 +46,7 @@ public static class SensitiveLogRedactor
         return result;
     }
 
-    public static void Redact(WebApiClientCore.Attributes.LogMessage logMessage)
+    public static void Redact(LogMessage logMessage)
     {
         logMessage.RequestHeaders = Redact(logMessage.RequestHeaders);
         logMessage.RequestContent = Redact(logMessage.RequestContent);
