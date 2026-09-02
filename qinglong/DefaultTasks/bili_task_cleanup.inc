@@ -94,9 +94,10 @@ function preference(task) {
   if (Number(task.pid || 0) > 0) score += 1000;
 
   // 同一逻辑任务重复时，优先保留当前正式 SubscriptionTasks 路径。
-  if (/ZzzHe2333_BiliBiliToolPro[\\/]qinglong[\\/]SubscriptionTasks[\\/]/i.test(command)) {
+  // 青龙不同版本可能使用真实路径，也可能把路径分隔符扁平化成 _ / -。
+  if (/ZzzHe2333[\\/_-]BiliBiliToolPro[\\/_-]qinglong[\\/_-]SubscriptionTasks[\\/_-]/i.test(command)) {
     score += 200;
-  } else if (/ZzzHe2333_BiliBiliToolPro_main[\\/]qinglong[\\/]SubscriptionTasks[\\/]/i.test(command)) {
+  } else if (/ZzzHe2333[\\/_-]BiliBiliToolPro_main[\\/_-]qinglong[\\/_-]SubscriptionTasks[\\/_-]/i.test(command)) {
     score += 100;
   }
 
