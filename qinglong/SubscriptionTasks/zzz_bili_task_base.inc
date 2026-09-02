@@ -13,7 +13,16 @@ if [ ! -d "$dir_repo" ] && [ -d "$QL_DIR/repo" ]; then
 fi
 
 fork_repo_name="ZzzHe2333_BiliBiliToolPro"
-fork_repo_dir="$(find "$dir_repo" -type d \( -iname "$fork_repo_name" -o -iname "${fork_repo_name}_main" \) | head -1)"
+fork_repo_dir="${BILI_REPO_DIR:-}"
+if [ -z "$fork_repo_dir" ] || [ ! -d "$fork_repo_dir" ]; then
+    if [ -d "$dir_repo/$fork_repo_name" ]; then
+        fork_repo_dir="$dir_repo/$fork_repo_name"
+    elif [ -d "$dir_repo/${fork_repo_name}_main" ]; then
+        fork_repo_dir="$dir_repo/${fork_repo_name}_main"
+    else
+        fork_repo_dir="$(find "$dir_repo" -type d \( -iname "$fork_repo_name" -o -iname "${fork_repo_name}_main" \) | head -1)"
+    fi
+fi
 
 if [ -z "$fork_repo_dir" ]; then
   echo "[Zzz-Bili] 未找到订阅仓库目录：ZzzHe2333/BiliBiliToolPro" >&2

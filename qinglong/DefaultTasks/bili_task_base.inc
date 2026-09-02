@@ -69,7 +69,16 @@ touch /root/.bashrc && . /root/.bashrc
 
 say "青龙repo目录: $dir_repo"
 qinglong_bili_repo="$(echo "$bili_repo" | sed 's/\//_/g')${bili_branch}"
-qinglong_bili_repo_dir="$(find $dir_repo -type d \( -iname $qinglong_bili_repo -o -iname ${qinglong_bili_repo}_main \) | head -1)"
+qinglong_bili_repo_dir="${BILI_REPO_DIR:-}"
+if [ -z "$qinglong_bili_repo_dir" ] || [ ! -d "$qinglong_bili_repo_dir" ]; then
+    if [ -d "$dir_repo/$qinglong_bili_repo" ]; then
+        qinglong_bili_repo_dir="$dir_repo/$qinglong_bili_repo"
+    elif [ -d "$dir_repo/${qinglong_bili_repo}_main" ]; then
+        qinglong_bili_repo_dir="$dir_repo/${qinglong_bili_repo}_main"
+    else
+        qinglong_bili_repo_dir="$(find "$dir_repo" -type d \( -iname "$qinglong_bili_repo" -o -iname "${qinglong_bili_repo}_main" \) | head -1)"
+    fi
+fi
 say "bili仓库目录: $qinglong_bili_repo_dir"
 
 current_linux_os="debian"
