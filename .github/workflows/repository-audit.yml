@@ -44,6 +44,58 @@ jobs:
             bash -n "$file"
           done
 
+      - name: Validate publication gate behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          fixture="$(mktemp)"
+          trap 'rm -f "$fixture"' EXIT
+          export GATE_FIXTURE="$fixture"
+          export GITHUB_REPOSITORY="ZzzHe2333/BiliBiliToolPro"
+          export REQUIRED_CHECKS_WAIT_SECONDS=0
+          export REQUIRED_CHECKS_POLL_SECONDS=1
+          gate_sha="1111111111111111111111111111111111111111"
+
+          gh() {
+            if [ "${1:-}" != "api" ]; then
+              echo "test gh stub only supports api" >&2
+              return 2
+            fi
+            cat "$GATE_FIXTURE"
+          }
+          export -f gh
+
+          cat > "$fixture" <<JSON
+          {"workflow_runs":[
+            {"name":"Repository audit","head_sha":"$gate_sha","event":"push","status":"completed","conclusion":"success","created_at":"2026-09-02T00:00:00Z"},
+            {"name":"CodeQL","head_sha":"$gate_sha","event":"push","status":"completed","conclusion":"success","created_at":"2026-09-02T00:00:01Z"}
+          ]}
+          JSON
+          bash ./scripts/verify_required_checks.sh "$gate_sha"
+
+          cat > "$fixture" <<JSON
+          {"workflow_runs":[
+            {"name":"Repository audit","head_sha":"$gate_sha","event":"push","status":"completed","conclusion":"success","created_at":"2026-09-02T00:00:00Z"},
+            {"name":"CodeQL","head_sha":"$gate_sha","event":"pull_request","status":"completed","conclusion":"success","created_at":"2026-09-02T00:00:02Z"},
+            {"name":"CodeQL","head_sha":"$gate_sha","event":"push","status":"completed","conclusion":"failure","created_at":"2026-09-02T00:00:01Z"}
+          ]}
+          JSON
+          if bash ./scripts/verify_required_checks.sh "$gate_sha"; then
+            echo "publication gate incorrectly accepted a failed push CodeQL run" >&2
+            exit 1
+          fi
+
+          cat > "$fixture" <<JSON
+          {"workflow_runs":[
+            {"name":"Repository audit","head_sha":"$gate_sha","event":"push","status":"completed","conclusion":"success","created_at":"2026-09-02T00:00:00Z"}
+          ]}
+          JSON
+          if bash ./scripts/verify_required_checks.sh "$gate_sha"; then
+            echo "publication gate incorrectly accepted a missing CodeQL run" >&2
+            exit 1
+          fi
+
       - name: Check changed-file whitespace
         shell: bash
         run: |
