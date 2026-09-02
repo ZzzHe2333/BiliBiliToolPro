@@ -63,6 +63,10 @@ jobs:
             cp "$source_file" "$target_file"
           done
           printf '%s\n' "$GITHUB_SHA" > "$publish_dir/fork-main-commit.txt"
+          (
+            cd "$publish_dir"
+            sha256sum bilibili-tool-pro-fork-main-*.zip fork-main-commit.txt > fork-main-sha256.txt
+          )
 
       - name: Create or update rolling release
         env:
@@ -77,6 +81,7 @@ jobs:
             ./src/Ray.BiliBiliTool.Console/bin/Publish/bilibili-tool-pro-fork-main-linux-arm.zip
             ./src/Ray.BiliBiliTool.Console/bin/Publish/bilibili-tool-pro-fork-main-linux-musl-arm64.zip
             ./src/Ray.BiliBiliTool.Console/bin/Publish/fork-main-commit.txt
+            ./src/Ray.BiliBiliTool.Console/bin/Publish/fork-main-sha256.txt
           )
 
           if gh release view fork-main --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
