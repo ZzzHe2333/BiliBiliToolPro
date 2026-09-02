@@ -3,26 +3,8 @@ name: "CodeQL"
 on:
   push:
     branches: [ main, release/* ]
-    paths:
-      - '**/*.js'
-      - '**/*.cs'
-      - '**/*.cshtml'
-      - '**/*.csproj'
-      - '**/*.props'
-      - '**/*.targets'
-      - '**/*.sln'
-      - '.github/workflows/codeql-analysis.yml'
   pull_request:
     branches: [ main ]
-    paths:
-      - '**/*.js'
-      - '**/*.cs'
-      - '**/*.cshtml'
-      - '**/*.csproj'
-      - '**/*.props'
-      - '**/*.targets'
-      - '**/*.sln'
-      - '.github/workflows/codeql-analysis.yml'
   schedule:
     - cron: '17 3 * * 1'
 

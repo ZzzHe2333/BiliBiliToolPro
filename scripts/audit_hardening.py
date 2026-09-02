@@ -48,6 +48,43 @@ def main() -> int:
         "Tencent SCF workflow must pin the serverless-cloud-framework CLI version",
     )
 
+    check_gate = read("scripts/verify_required_checks.sh")
+    require(
+        'required=("Repository audit" "CodeQL")' in check_gate,
+        "publication gate must require both Repository audit and CodeQL",
+    )
+    require(
+        'select(.name == $workflow_name and .head_sha == $sha and .event == "push")' in check_gate,
+        "publication gate must bind required checks to the exact push commit",
+    )
+
+    codeql = read(".github/workflows/codeql-analysis.yml")
+    require(
+        "paths:" not in codeql,
+        "CodeQL must run on every main/release and pull-request commit used by publication gates",
+    )
+    require(
+        "branches: [ main, release/* ]" in codeql and "branches: [ main ]" in codeql,
+        "CodeQL branch coverage must include main/release pushes and main pull requests",
+    )
+
+    gated_workflows = (
+        ".github/workflows/publish-image.yml",
+        ".github/workflows/publish-fork-rolling-release.yml",
+        ".github/workflows/publish-release.yml",
+        ".github/workflows/auto-deploy-tencent-scf.yml",
+    )
+    for workflow_path in gated_workflows:
+        workflow = read(workflow_path)
+        require(
+            "verify_required_checks.sh" in workflow,
+            f"release/deployment workflow must enforce required checks: {workflow_path}",
+        )
+        require(
+            "actions: read" in workflow,
+            f"release/deployment workflow must grant only the actions read permission it needs: {workflow_path}",
+        )
+
     if ERRORS:
         print("Hardening audit failed:", file=sys.stderr)
         for error in ERRORS:

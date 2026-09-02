@@ -34,10 +34,12 @@ on:
       - 'Directory.Build.props'
       - 'Directory.Packages.props'
       - 'common.props'
+      - 'scripts/verify_required_checks.sh'
       - '.github/workflows/publish-image.yml'
 
 permissions:
   contents: read
+  actions: read
   packages: write
 
 # 同一入口的旧镜像构建如果晚于新构建完成，会把 latest 回滚。
@@ -71,6 +73,13 @@ jobs:
             echo "Refusing to update latest from non-main commit: selected=$GITHUB_SHA, main=$main_sha" >&2
             exit 1
           fi
+
+      - name: Wait for required checks
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publishLatest == true) }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash ./scripts/verify_required_checks.sh "$GITHUB_SHA"
 
       - name: Resolve image tag
         id: image
