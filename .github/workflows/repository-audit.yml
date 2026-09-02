@@ -124,3 +124,4 @@ jobs:
             git diff --check HEAD^ HEAD
           else
             git diff --check HEAD
+          fi
