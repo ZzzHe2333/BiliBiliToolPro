@@ -142,6 +142,9 @@ def audit_solution_items() -> None:
 
 def audit_qinglong_isolation() -> None:
     base = read("qinglong/SubscriptionTasks/zzz_bili_task_base.inc")
+    common_base = read("qinglong/DefaultTasks/bili_task_base.inc")
+    cleanup = read("qinglong/DefaultTasks/bili_task_cleanup.inc")
+
     required = (
         'export BILI_MODE="${Zzz_BILI_MODE:-dotnet}"',
         'export BILI_GITHUB_PROXY="${Zzz_BILI_GITHUB_PROXY:-}"',
@@ -157,6 +160,11 @@ def audit_qinglong_isolation() -> None:
         if fragment in base:
             fail(f"Zzz-Bili must not inherit generic shell helper variable: {fragment}")
 
+    if 'use_cn_mirror=${BILI_USE_CN_MIRROR:-"false"}' not in common_base:
+        fail("Qinglong common base must not modify apt/apk mirrors unless explicitly enabled")
+    if "bili_branch" in common_base or "QL_BRANCH" in common_base:
+        fail("Qinglong common base must not retain legacy develop-branch routing")
+
     task_dir = ROOT / "qinglong/SubscriptionTasks"
     for path in task_dir.glob("zzz_bili_task_*.sh"):
         content = path.read_text(encoding="utf-8-sig")
@@ -164,6 +172,9 @@ def audit_qinglong_isolation() -> None:
         legacy = '$BILI_REPO_ROOT/ZzzHe2333_BiliBiliToolPro_main'
         if standard not in content or legacy not in content:
             fail(f"Qinglong task lacks deterministic repo candidates: {path.relative_to(ROOT)}")
+
+    if "score += 200" not in cleanup or "ZzzHe2333_BiliBiliToolPro_main" not in cleanup:
+        fail("Qinglong deduplication must prefer the standard repository task path")
 
 
 def audit_release_workflows() -> None:
@@ -175,12 +186,28 @@ def audit_release_workflows() -> None:
         fail("publish-image.yml must not independently react to Release creation")
     if "main-${GITHUB_SHA::12}" not in image:
         fail("main container builds must have immutable commit-derived tag")
+    if "concurrency:" not in image or "cancel-in-progress: true" not in image:
+        fail("rolling image publication must prevent stale builds from overwriting latest")
+    if "DOCKERHUB_" in image or "docker.io/" in image.lower():
+        fail("container publishing must not have an implicit DockerHub side channel")
     if "uses: ./.github/workflows/publish-image.yml" not in release:
         fail("formal Release workflow must explicitly publish its matching container image")
     if "Validate release version" not in release:
         fail("formal Release workflow must validate version provenance")
+    if "publishLatest: false" not in release:
+        fail("formal Release container publication must not race the rolling latest tag")
     if '--target "$GITHUB_SHA"' not in rolling:
         fail("fork-main Release metadata must track current rolling commit")
+
+
+def audit_repository_maintenance() -> None:
+    branch_cleanup = read(".github/workflows/cleanup-merged-branch.yml")
+    if "github.event.pull_request.merged == true" not in branch_cleanup:
+        fail("merged-branch cleanup must only run for successfully merged pull requests")
+    if "github.event.pull_request.head.repo.full_name == github.repository" not in branch_cleanup:
+        fail("merged-branch cleanup must never attempt to delete branches in external repositories")
+    if "gh api --method DELETE" not in branch_cleanup:
+        fail("merged-branch cleanup workflow is missing the branch deletion action")
 
 
 def main() -> int:
@@ -190,6 +217,7 @@ def main() -> int:
     audit_solution_items()
     audit_qinglong_isolation()
     audit_release_workflows()
+    audit_repository_maintenance()
 
     if ERRORS:
         print("Repository audit failed:", file=sys.stderr)
