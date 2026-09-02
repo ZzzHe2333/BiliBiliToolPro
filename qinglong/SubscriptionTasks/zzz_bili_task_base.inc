@@ -162,166 +162,21 @@ send_qinglong_notification() {
     local target_code=$1
     local log_file=$2
     local task_status=$3
+    local notify_helper="$fork_repo_dir/qinglong/SubscriptionTasks/zzz_bili_notify.js"
 
     if ! command -v node >/dev/null 2>&1; then
         echo "[Zzz-Bili] 未找到 node，无法调用青龙通知接口" >&2
         return 0
     fi
 
-    node - "$target_code" "$log_file" "$task_status" <<'NODE'
-const fs = require('fs');
-const path = require('path');
-const { spawnSync } = require('child_process');
+    if [ ! -f "$notify_helper" ]; then
+        echo "[Zzz-Bili] 未找到通知辅助脚本：$notify_helper" >&2
+        return 0
+    fi
 
-const targetCode = process.argv[2] || 'Task';
-const logFile = process.argv[3];
-const taskStatus = Number(process.argv[4] || 0);
-const qlDir = process.env.QL_DIR || '/ql';
-const qlDataDir = (process.env.QL_DATA_DIR || path.join(qlDir, 'data')).replace(/\/$/, '');
-const statusText = taskStatus === 0 ? '成功' : taskStatus === 2 ? '部分失败' : `失败(${taskStatus})`;
-const title = `Zzz-Bili ${targetCode} - ${statusText}`;
-
-function redactSensitiveContent(content) {
-  // B站 Cookie / CSRF 单字段：兼容裸值、单/双引号赋值以及 JSON 序列化格式。
-  content = content.replace(
-    /\b(SESSDATA|bili_jct|csrf|csrf_token|DedeUserID__ckMd5|DedeUserID|sid|buvid3|buvid4|buvid_fp|buvid_fp_plain|b_nut|b_lsid|_uuid|ac_time_value|access_key|bili_ticket)\s*=\s*(?:"[^"]*"|'[^']*'|[^;&\s"'<>]+)/gi,
-    '$1=[已隐藏]'
-  );
-  content = content.replace(
-    /("(?:SESSDATA|bili_jct|csrf|csrf_token|DedeUserID__ckMd5|DedeUserID|sid|buvid3|buvid4|buvid_fp|buvid_fp_plain|b_nut|b_lsid|_uuid|ac_time_value|access_key|bili_ticket)"\s*:\s*")[^"]*(")/gi,
-    '$1[已隐藏]$2'
-  );
-
-  // 整条 Cookie / Authorization 以及本 fork 的 Cookie 环境变量。
-  content = content.replace(/(Zzz_BiliBiliCookies__\d+\s*[:=]\s*)[^\r\n]+/gi, '$1[已隐藏]');
-  content = content.replace(/((?:Cookie|Set-Cookie|Authorization)\s*[:=]\s*)[^\r\n]+/gi, '$1[已隐藏]');
-  content = content.replace(
-    /("(?:Cookie|Set-Cookie|Authorization)"\s*:\s*")[^"]*(")/gi,
-    '$1[已隐藏]$2'
-  );
-
-  // 推送、青龙 OpenAPI、扫码登录等常见凭据，兼容 JSON、key=value 和 URL 查询参数。
-  content = content.replace(
-    /("(?:access_token|refresh_token|client_secret|ClientSecret|ClientId|qrcode_key|readkey|scKey|turboScKey|botToken|sKey|secret|token|webhook|webHookUrl|apiKey|apikey)"\s*:\s*")[^"]*(")/gi,
-    '$1[已隐藏]$2'
-  );
-  content = content.replace(
-    /\b((?:access_token|refresh_token|client_secret|ClientSecret|ClientId|qrcode_key|readkey|scKey|turboScKey|botToken|sKey|secret|token|webhook|webHookUrl|apiKey|apikey)\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^&\s]+)/gi,
-    '$1[已隐藏]'
-  );
-
-  return content;
-}
-
-function prepareContent() {
-  let content = '';
-  try {
-    content = fs.readFileSync(logFile, 'utf8');
-  } catch (error) {
-    return `任务退出码：${taskStatus}\n读取任务日志失败：${error.message}`;
-  }
-
-  content = content.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -\/]*[@-~])/g, '');
-
-  const marker = 'BiliBiliToolPro 开始运行...';
-  const markerIndex = content.indexOf(marker);
-  if (markerIndex >= 0) {
-    const lineStart = content.lastIndexOf('\n', markerIndex);
-    content = content.slice(lineStart >= 0 ? lineStart + 1 : markerIndex);
-  }
-
-  content = redactSensitiveContent(content);
-
-  content = content.trim();
-  if (!content) content = `任务执行结束，退出码：${taskStatus}`;
-
-  const maxLength = 16000;
-  if (content.length > maxLength) {
-    const half = Math.floor((maxLength - 80) / 2);
-    content = `${content.slice(0, half)}\n\n……通知正文过长，中间已省略……\n\n${content.slice(-half)}`;
-  }
-  return content;
-}
-
-function trySystemNotify(content) {
-  const clientPath = path.join(qlDir, 'shell/preload/client.js');
-  if (!fs.existsSync(clientPath)) {
-    console.warn(`[Zzz-Bili] 青龙 systemNotify 客户端不存在：${clientPath}`);
-    return false;
-  }
-
-  const childCode = `
-const fs = require('fs');
-(async () => {
-  const payload = JSON.parse(fs.readFileSync(0, 'utf8'));
-  const api = require(${JSON.stringify(clientPath)});
-  const result = await api.systemNotify(payload);
-  if (typeof api.close === 'function') api.close();
-  process.stdout.write(JSON.stringify(result || {}));
-  process.exit(Number(result?.code) === 200 ? 0 : 2);
-})().catch((error) => {
-  console.error(error?.message || String(error));
-  process.exit(1);
-});`;
-
-  const result = spawnSync(process.execPath, ['-e', childCode], {
-    input: JSON.stringify({ title, content }),
-    encoding: 'utf8',
-    timeout: 35000,
-    env: process.env,
-  });
-
-  if (result.status === 0) {
-    console.log('[Zzz-Bili] 已使用青龙面板系统通知发送结果');
-    return true;
-  }
-
-  let detail = (result.stdout || result.stderr || '').trim();
-  try {
-    const response = JSON.parse(result.stdout || '{}');
-    detail = `code=${response.code ?? 'unknown'}, message=${response.message ?? ''}`;
-  } catch (_) {}
-  console.warn(`[Zzz-Bili] 青龙面板系统通知失败：${detail || `exit=${result.status ?? 'unknown'}`}`);
-  return false;
-}
-
-async function tryEnvNotify(content) {
-  const candidates = [
-    path.join(qlDataDir, 'scripts/sendNotify.js'),
-    path.join(qlDir, 'scripts/sendNotify.js'),
-  ];
-  const notifyPath = candidates.find((item) => fs.existsSync(item));
-
-  if (!notifyPath) {
-    console.warn('[Zzz-Bili] 未找到青龙 sendNotify.js，无法使用环境变量通知兜底');
-    return false;
-  }
-
-  try {
-    const notifyModule = require(notifyPath);
-    const sendNotify = notifyModule.sendNotify || notifyModule.send;
-    if (typeof sendNotify !== 'function') {
-      console.warn(`[Zzz-Bili] ${notifyPath} 未导出 sendNotify/send`);
-      return false;
-    }
-
-    await sendNotify(title, content);
-    console.log('[Zzz-Bili] 已回退到青龙环境变量通知流程');
-    return true;
-  } catch (error) {
-    console.warn(`[Zzz-Bili] 青龙环境变量通知失败：${error.message}`);
-    return false;
-  }
-}
-
-(async () => {
-  const content = prepareContent();
-  if (trySystemNotify(content)) return;
-  await tryEnvNotify(content);
-})().catch((error) => {
-  console.warn(`[Zzz-Bili] 通知处理异常：${error.message}`);
-});
-NODE
+    # 通知模块在独立 Node 进程内运行，并由辅助脚本负责硬超时和显式退出。
+    # 即使 sendNotify.js 残留 timer/socket，也不能继续占住青龙定时任务。
+    node "$notify_helper" "$target_code" "$log_file" "$task_status" || true
 }
 
 run_task() {
@@ -363,5 +218,11 @@ run_task() {
     send_qinglong_notification "$target_code" "$log_file" "$logical_status" || true
     rm -f "$log_file"
 
+    # 青龙 otask.sh 会在函数/eval 上下文执行任务。Bash 5.2 在 errexit 开启时，
+    # 若 eval 中的函数以非零状态返回，会触发 pop_var_context 内部诊断并干扰收尾。
+    # 仅在需要返回失败/部分失败时关闭 errexit，让 Qinglong 正常接收退出状态。
+    if [ "$logical_status" -ne 0 ]; then
+        set +e
+    fi
     return "$logical_status"
 }
