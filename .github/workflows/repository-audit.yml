@@ -48,9 +48,17 @@ jobs:
         run: |
           set -euo pipefail
           bash -n ./scripts/verify_required_checks.sh
+          bash -n ./scripts/test_qinglong_notification_exit.sh
+          node --check ./qinglong/SubscriptionTasks/zzz_bili_notify.js
           for file in qinglong/SubscriptionTasks/*.sh qinglong/SubscriptionTasks/*.inc qinglong/DefaultTasks/*.inc; do
             bash -n "$file"
           done
+
+      - name: Validate Qinglong notification termination
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash ./scripts/test_qinglong_notification_exit.sh
 
       - name: Validate publication gate behavior
         shell: bash
@@ -116,4 +124,3 @@ jobs:
             git diff --check HEAD^ HEAD
           else
             git diff --check HEAD
-          fi
