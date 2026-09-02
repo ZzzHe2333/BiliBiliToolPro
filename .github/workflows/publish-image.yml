@@ -79,7 +79,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./scripts/verify_required_checks.sh "$GITHUB_SHA"
+        run: bash ./scripts/verify_required_checks.sh "$GITHUB_SHA"
 
       - name: Resolve image tag
         id: image
