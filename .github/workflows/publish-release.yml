@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
   packages: write
 
 concurrency:
@@ -35,6 +36,12 @@ jobs:
             echo "Formal releases may only be created from current main: selected=$GITHUB_SHA, main=$main_sha" >&2
             exit 1
           fi
+
+      - name: Wait for required checks
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./scripts/verify_required_checks.sh "$GITHUB_SHA"
 
       - name: Validate release version
         id: version
