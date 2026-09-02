@@ -25,6 +25,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify main provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main
+          main_sha="$(git rev-parse origin/main)"
+          if [ "$GITHUB_SHA" != "$main_sha" ]; then
+            echo "Formal releases may only be created from current main: selected=$GITHUB_SHA, main=$main_sha" >&2
+            exit 1
+          fi
+
       - name: Validate release version
         id: version
         shell: bash
