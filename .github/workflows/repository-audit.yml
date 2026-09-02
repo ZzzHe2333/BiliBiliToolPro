@@ -1,0 +1,37 @@
+name: Repository audit
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Independent repository invariants
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Run repository audit
+        shell: bash
+        run: python3 ./scripts/audit_repository.py
+
+      - name: Validate Qinglong shell syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in qinglong/SubscriptionTasks/*.sh qinglong/SubscriptionTasks/*.inc qinglong/DefaultTasks/*.inc; do
+            bash -n "$file"
+          done
+
+      - name: Check patch whitespace
+        shell: bash
+        run: git diff --check HEAD^
