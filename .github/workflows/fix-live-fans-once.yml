@@ -1,0 +1,172 @@
+name: Fix live fans medal once
+
+on:
+  push:
+    branches:
+      - fix/live-fans-medal-deleted-up
+    paths:
+      - '.github/workflows/fix-live-fans-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/live-fans-medal-deleted-up
+          fetch-depth: 0
+
+      - name: Patch deleted-UP handling
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          live_path = Path('src/Ray.BiliBiliTool.DomainService/LiveDomainService.cs')
+          text = live_path.read_text(encoding='utf-8-sig')
+
+          old = '''            // 通过空间主页信息获取直播间 id
+            var liveHostUserId = medal.Medal_info.Target_id;
+            var req = new GetSpaceInfoDto() { mid = liveHostUserId };
+
+            var spaceInfo = await upInfoApi.GetSpaceInfo(req, ck.ToString());
+            if (spaceInfo.Code != 0)
+            {
+                logger.LogError("【获取直播间信息】失败");
+                logger.LogError("【原因】{message}", spaceInfo.Message);
+                return;
+            }
+
+            var successCount = 0;
+'''
+          new = '''            // GetFansMedalInfoList 已完成空间信息和直播间校验，直接复用 RoomId，
+            // 避免同一主播再次请求空间接口导致已注销账号重复触发业务错误。
+            var successCount = 0;
+'''
+          if old not in text:
+              raise SystemExit('send-danmaku space-info block not found')
+          text = text.replace(old, new, 1)
+
+          text = text.replace(
+              '''                        spaceInfo.Data.Live_room.Roomid,
+                        _liveFansMedalTaskOptions.DanmakuContent
+''',
+              '''                        info.RoomId,
+                        _liveFansMedalTaskOptions.DanmakuContent
+''',
+              1,
+          )
+          text = text.replace(
+              '''                spaceInfo.Data.Name,
+                successCount,
+''',
+              '''                medal.Target_name,
+                successCount,
+''',
+              1,
+          )
+
+          old = '''        foreach (var medal in medalWallInfo.Data.List)
+        {
+            logger.LogInformation("【主播】{name} ", medal.Target_name);
+            if (_liveFansMedalTaskOptions.IsSkipLevel20Medal && medal.Medal_info.Level >= 20)
+'''
+          new = '''        foreach (var medal in medalWallInfo.Data.List)
+        {
+            logger.LogInformation("【主播】{name} ", medal.Target_name);
+
+            // 粉丝牌墙可能长期保留已注销账号。此类 UID 的空间接口会返回 code=-404 且省略 data，
+            // 属于正常的失效数据，不应中断整个粉丝牌任务。
+            if (
+                medal.Medal_info.Target_id <= 0
+                || string.Equals(medal.Target_name, "账号已注销", StringComparison.OrdinalIgnoreCase)
+            )
+            {
+                logger.LogInformation("该粉丝牌对应账号已注销/无效，跳过");
+                continue;
+            }
+
+            if (_liveFansMedalTaskOptions.IsSkipLevel20Medal && medal.Medal_info.Level >= 20)
+'''
+          if old not in text:
+              raise SystemExit('medal loop block not found')
+          text = text.replace(old, new, 1)
+
+          old = '''            var spaceInfo = await upInfoApi.GetSpaceInfo(req, ck.ToString());
+            if (spaceInfo.Code != 0)
+            {
+                logger.LogError("【获取空间信息】失败");
+                logger.LogError("【原因】{message}", spaceInfo.Message);
+                continue;
+            }
+
+            // 用以排除有牌子无直播间的up主
+            if (spaceInfo.Data.Live_room is null)
+            {
+                logger.LogInformation("【主播】{name} 直播间id获取失败，已跳过", medal.Target_name);
+                continue;
+            }
+
+            var roomId = spaceInfo.Data.Live_room.Roomid;
+'''
+          new = '''            var spaceInfo = await upInfoApi.GetSpaceInfo(req, ck.ToString());
+            if (spaceInfo.Code != 0)
+            {
+                if (spaceInfo.Code == -404)
+                {
+                    logger.LogInformation(
+                        "【主播】{name} 空间不存在或账号已注销，跳过",
+                        medal.Target_name
+                    );
+                }
+                else
+                {
+                    logger.LogWarning(
+                        "【获取空间信息】主播 {name} 失败，code={code}，原因：{message}，已跳过",
+                        medal.Target_name,
+                        spaceInfo.Code,
+                        spaceInfo.Message
+                    );
+                }
+                continue;
+            }
+
+            var spaceData = spaceInfo.Data;
+            // 用以排除有牌子无直播间的up主，以及异常的成功响应空 data。
+            if (spaceData?.Live_room is null)
+            {
+                logger.LogInformation("【主播】{name} 无可用直播间，已跳过", medal.Target_name);
+                continue;
+            }
+
+            var roomId = spaceData.Live_room.Roomid;
+'''
+          if old not in text:
+              raise SystemExit('space-info handling block not found')
+          text = text.replace(old, new, 1)
+          live_path.write_text(text, encoding='utf-8-sig')
+
+          test_path = Path('test/Ray.BiliBiliTool.Agent.FunctionalTests/LiveApiTest.cs')
+          test = test_path.read_text(encoding='utf-8-sig')
+          old_test = '            BiliApiResponse<GetSpaceInfoResponse> re = api.GetSpaceInfo(\n'
+          new_test = '            BiliApiResponseOptionalData<GetSpaceInfoResponse> re = api.GetSpaceInfo(\n'
+          if old_test not in test:
+              raise SystemExit('GetSpaceInfo test declaration not found')
+          test = test.replace(old_test, new_test, 1)
+          test_path.write_text(test, encoding='utf-8-sig')
+          PY
+
+          rm .github/workflows/fix-live-fans-once.yml
+          git diff --check
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'fix: skip deleted accounts in live fans medal tasks'
+          git push origin HEAD:fix/live-fans-medal-deleted-up
