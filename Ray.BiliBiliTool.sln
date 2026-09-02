@@ -47,19 +47,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{73DD457B-E06E-45ED-A6BA-7E3C02F8BDF1}"
 	ProjectSection(SolutionItems) = preProject
-		.github\pull.yml = .github\pull.yml
 		.github\PULL_REQUEST_TEMPLATE.md = .github\PULL_REQUEST_TEMPLATE.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{61613EF4-3644-42D4-A620-70547291FB38}"
 	ProjectSection(SolutionItems) = preProject
-		.github\workflows\auto-close-pr.yml = .github\workflows\auto-close-pr.yml
 		.github\workflows\auto-deploy-tencent-scf.yml = .github\workflows\auto-deploy-tencent-scf.yml
 		.github\workflows\codeql-analysis.yml = .github\workflows\codeql-analysis.yml
 		.github\workflows\publish-image.yml = .github\workflows\publish-image.yml
 		.github\workflows\publish-release.yml = .github\workflows\publish-release.yml
-		.github\workflows\repo-sync.yml = .github\workflows\repo-sync.yml
-		.github\workflows\tag.yml = .github\workflows\tag.yml
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docker", "docker", "{A93210FD-27B6-40E4-B08D-391F96CA2754}"
@@ -83,7 +79,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tencentScf", "tencentScf", 
 	ProjectSection(SolutionItems) = preProject
 		tencentScf\bootstrap = tencentScf\bootstrap
 		tencentScf\index.sh = tencentScf\index.sh
-		tencentScf\publish.bat = tencentScf\publish.bat
 		tencentScf\publish.sh = tencentScf\publish.sh
 		tencentScf\README.md = tencentScf\README.md
 		tencentScf\serverless.yml = tencentScf\serverless.yml
@@ -91,22 +86,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tencentScf", "tencentScf", 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "qinglong", "qinglong", "{1C6CC38A-A5D5-41EF-9072-70AEEEA211F7}"
 	ProjectSection(SolutionItems) = preProject
-		qinglong\dotnet-install.sh = qinglong\dotnet-install.sh
-		qinglong\extra.sh = qinglong\extra.sh
-		qinglong\ray-dotnet-install.sh = qinglong\ray-dotnet-install.sh
 		qinglong\README.md = qinglong\README.md
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "DefaultTasks", "DefaultTasks", "{DE60A16C-CA3B-45E9-8A9D-0E91ACEBDEE0}"
 	ProjectSection(SolutionItems) = preProject
-		qinglong\DefaultTasks\bili_dev_task_daily.sh = qinglong\DefaultTasks\bili_dev_task_daily.sh
-		qinglong\DefaultTasks\bili_dev_task_liveLottery.sh = qinglong\DefaultTasks\bili_dev_task_liveLottery.sh
-		qinglong\DefaultTasks\bili_dev_task_test.sh = qinglong\DefaultTasks\bili_dev_task_test.sh
-		qinglong\DefaultTasks\bili_dev_task_unfollowBatched.sh = qinglong\DefaultTasks\bili_dev_task_unfollowBatched.sh
-		qinglong\DefaultTasks\bili_task_daily.sh = qinglong\DefaultTasks\bili_task_daily.sh
-		qinglong\DefaultTasks\bili_task_liveLottery.sh = qinglong\DefaultTasks\bili_task_liveLottery.sh
-		qinglong\DefaultTasks\bili_task_test.sh = qinglong\DefaultTasks\bili_task_test.sh
-		qinglong\DefaultTasks\bili_task_unfollowBatched.sh = qinglong\DefaultTasks\bili_task_unfollowBatched.sh
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "ISSUE_TEMPLATE", "ISSUE_TEMPLATE", "{830361B7-BCC1-4853-879A-761B0FD86826}"
@@ -137,8 +121,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "scripts", "scripts", "{2B5FD099-CC28-4FBC-9F20-F20300C5DFD2}"
 	ProjectSection(SolutionItems) = preProject
 		scripts\clean.cmd = scripts\clean.cmd
-		scripts\publish.bat = scripts\publish.bat
-		scripts\publish.ps1 = scripts\publish.ps1
 		scripts\publish.sh = scripts\publish.sh
 		scripts\ut.ps1 = scripts\ut.ps1
 	EndProjectSection
