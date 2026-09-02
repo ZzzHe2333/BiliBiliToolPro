@@ -173,7 +173,17 @@ def audit_qinglong_isolation() -> None:
         if standard not in content or legacy not in content:
             fail(f"Qinglong task lacks deterministic repo candidates: {path.relative_to(ROOT)}")
 
-    if "score += 200" not in cleanup or "ZzzHe2333_BiliBiliToolPro_main" not in cleanup:
+    standard_preference = re.search(
+        r"ZzzHe2333.*?BiliBiliToolPro.*?SubscriptionTasks.*?score\s*\+=\s*200",
+        cleanup,
+        re.S,
+    )
+    legacy_preference = re.search(
+        r"ZzzHe2333.*?BiliBiliToolPro_main.*?SubscriptionTasks.*?score\s*\+=\s*100",
+        cleanup,
+        re.S,
+    )
+    if not standard_preference or not legacy_preference:
         fail("Qinglong deduplication must prefer the standard repository task path")
 
 
