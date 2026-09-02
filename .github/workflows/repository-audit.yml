@@ -22,7 +22,10 @@ jobs:
 
       - name: Run repository audit
         shell: bash
-        run: python3 ./scripts/audit_repository.py
+        run: |
+          set -euo pipefail
+          python3 ./scripts/audit_repository.py
+          python3 ./scripts/audit_hardening.py
 
       - name: Validate Qinglong shell syntax
         shell: bash
