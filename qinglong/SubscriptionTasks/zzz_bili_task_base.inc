@@ -31,10 +31,11 @@ fi
 
 export Zzz_IsolatedMode=true
 
-# fork 专用运行/网络选项。
-export BILI_MODE="${Zzz_BILI_MODE:-${BILI_MODE:-dotnet}}"
-export BILI_GITHUB_PROXY="${Zzz_BILI_GITHUB_PROXY:-${BILI_GITHUB_PROXY:-}}"
-export BILI_USE_CN_MIRROR="${Zzz_BILI_USE_CN_MIRROR:-${BILI_USE_CN_MIRROR:-true}}"
+# 本项目青龙 Shell 辅助变量也使用 Zzz_ 命名空间，不继承通用 BILI_*，
+# 避免同一个青龙中其他脚本的运行模式、代理或软件源设置串入本项目。
+export BILI_MODE="${Zzz_BILI_MODE:-dotnet}"
+export BILI_GITHUB_PROXY="${Zzz_BILI_GITHUB_PROXY:-}"
+export BILI_USE_CN_MIRROR="${Zzz_BILI_USE_CN_MIRROR:-false}"
 
 # 同一个青龙容器中的 Zzz-Bili 任务共享同一套源码、obj/bin 和 B站账号配置。
 # 必须串行执行，否则多个 dotnet run 并发时会出现 PDB/程序集文件锁，也会同时请求 B站接口。
@@ -73,7 +74,7 @@ acquire_zzz_task_lock() {
             ;;
     esac
 
-    # 优先使用 flock；大部分完整 Linux 环境都有。flock 会在进程退出时自动释放。
+    # 优先使用 flock；入口兼容层会把 BusyBox 不支持的 -w 转换为非阻塞轮询。
     if command -v flock >/dev/null 2>&1; then
         exec {zzz_lock_fd}>"$lock_file"
         echo "[Zzz-Bili] 等待任务互斥锁，最长 ${wait_seconds} 秒..."
@@ -88,7 +89,7 @@ acquire_zzz_task_lock() {
         return 75
     fi
 
-    # Alpine/精简镜像如果没有 flock，使用原子 mkdir 作为兼容方案。
+    # 系统如果没有 flock，使用原子 mkdir 作为兼容方案。
     zzz_lock_dir="${lock_file}.d"
     echo "[Zzz-Bili] 系统没有 flock，使用 mkdir 兼容锁；最长等待 ${wait_seconds} 秒"
 
