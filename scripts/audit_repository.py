@@ -142,6 +142,7 @@ def audit_solution_items() -> None:
 
 def audit_qinglong_isolation() -> None:
     base = read("qinglong/SubscriptionTasks/zzz_bili_task_base.inc")
+    notify_helper = read("qinglong/SubscriptionTasks/zzz_bili_notify.js")
     common_base = read("qinglong/DefaultTasks/bili_task_base.inc")
     cleanup = read("qinglong/DefaultTasks/bili_task_cleanup.inc")
 
@@ -160,8 +161,12 @@ def audit_qinglong_isolation() -> None:
         if fragment in base:
             fail(f"Zzz-Bili must not inherit generic shell helper variable: {fragment}")
 
-    if "bili_jct|csrf|csrf_token" not in base:
+    if "bili_jct|csrf|csrf_token" not in notify_helper:
         fail("Qinglong notification redaction must cover csrf and csrf_token")
+    if "spawnSync" not in notify_helper or "killSignal: 'SIGKILL'" not in notify_helper:
+        fail("Qinglong notification providers must run in isolated hard-timeout child processes")
+    if "process.exit(0);" not in notify_helper or "Zzz_BILI_NOTIFY_TIMEOUT_MS" not in notify_helper:
+        fail("Qinglong notification helper must have a bounded deterministic exit path")
 
     if 'use_cn_mirror=${BILI_USE_CN_MIRROR:-"false"}' not in common_base:
         fail("Qinglong common base must not modify apt/apk mirrors unless explicitly enabled")
