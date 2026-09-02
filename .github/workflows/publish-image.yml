@@ -1,10 +1,26 @@
 name: Publish image
 
 on:
+  workflow_call:
+    inputs:
+      imageTag:
+        description: 'Container image tag to publish'
+        required: true
+        type: string
+      publishLatest:
+        description: 'Also update latest'
+        required: false
+        default: true
+        type: boolean
   workflow_dispatch:
     inputs:
-      autoWithLatestTag:
-        description: 'Auto Add Latest Tag'
+      imageTag:
+        description: 'Optional image tag; blank uses manual-<commit>'
+        required: false
+        default: ''
+        type: string
+      publishLatest:
+        description: 'Also update latest'
         required: true
         default: true
         type: boolean
@@ -19,41 +35,65 @@ on:
       - 'Directory.Packages.props'
       - 'common.props'
       - '.github/workflows/publish-image.yml'
-  release:
-    types: [created]
 
 permissions:
   contents: read
   packages: write
 
+# 同一入口的旧镜像构建如果晚于新构建完成，会把 latest 回滚。
+# reusable Release 调用的 github.workflow 是调用方名称，因此不会与普通 main push 互相取消。
+concurrency:
+  group: publish-image-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
-  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-  DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
   GHCR_USERNAME: ${{ github.repository_owner }}
   GHCR_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
   GHCR_IMG_NAME: "ghcr.io/zzzhe2333/bili_tool_web"
 
 jobs:
   PublishImage:
-    # fork-main 是青龙 bilitool 的滚动二进制预发布，不应触发 Web 容器镜像发布。
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.release.tag_name != 'fork-main' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: GetTargetVersion
-        id: getTargetVersion
+      - name: Resolve image tag
+        id: image
         shell: bash
         run: |
           set -euo pipefail
-          if [ -n "${{ github.event.release.tag_name }}" ]; then
-            target_version="${{ github.event.release.tag_name }}"
+
+          event_name="${{ github.event_name }}"
+          requested_tag="${{ inputs.imageTag }}"
+          publish_latest="false"
+
+          # Reusable workflow calls always provide imageTag. Check it first because
+          # github.event_name remains the caller's event in a called workflow.
+          if [ -n "$requested_tag" ]; then
+            image_tag="$requested_tag"
+            publish_latest="${{ inputs.publishLatest }}"
+          elif [ "$event_name" = "push" ]; then
+            # Ordinary main commits are rolling container builds, not semantic releases.
+            image_tag="main-${GITHUB_SHA::12}"
+            publish_latest="true"
+          elif [ "$event_name" = "workflow_dispatch" ]; then
+            image_tag="manual-${GITHUB_SHA::12}"
+            publish_latest="${{ inputs.publishLatest }}"
           else
-            target_version="$(grep -oP '(?<=<Version>).*?(?=<\/Version>)' ./common.props)"
+            echo "Unsupported event without an explicit imageTag: $event_name" >&2
+            exit 1
           fi
-          echo "TargetVersion: $target_version"
-          echo "TargetVersion=$target_version" >> "$GITHUB_OUTPUT"
+
+          if [[ ! "$image_tag" =~ ^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$ ]]; then
+            echo "Invalid container tag: $image_tag" >&2
+            exit 1
+          fi
+
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "publish_latest=$publish_latest" >> "$GITHUB_OUTPUT"
+          echo "Image tag: $image_tag"
+          echo "Publish latest: $publish_latest"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
@@ -61,14 +101,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Login to DockerHub
-        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_PASSWORD != '' }}
-        uses: docker/login-action@v4
-        with:
-          username: ${{ env.DOCKERHUB_USERNAME }}
-          password: ${{ env.DOCKERHUB_PASSWORD }}
-
-      - name: Log in to ghcr
+      - name: Log in to GHCR
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -80,31 +113,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          target_version="${{ steps.getTargetVersion.outputs.TargetVersion }}"
+          image_tag="${{ steps.image.outputs.image_tag }}"
           tags_file="$(mktemp)"
           trap 'rm -f "$tags_file"' EXIT
 
-          echo "${GHCR_IMG_NAME}:${target_version}" >> "$tags_file"
-
-          dockerhub_enabled=false
-          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_PASSWORD" ]; then
-            dockerhub_enabled=true
-            echo "${DOCKERHUB_USERNAME}/bili_tool_web:${target_version}" >> "$tags_file"
-          fi
-
-          publish_latest=false
-          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "release" ] || [ "${{ inputs.autoWithLatestTag }}" = "true" ]; then
-            publish_latest=true
-          fi
-
-          if [ "$publish_latest" = true ]; then
+          echo "${GHCR_IMG_NAME}:${image_tag}" >> "$tags_file"
+          if [ "${{ steps.image.outputs.publish_latest }}" = "true" ]; then
             echo "${GHCR_IMG_NAME}:latest" >> "$tags_file"
-            if [ "$dockerhub_enabled" = true ]; then
-              echo "${DOCKERHUB_USERNAME}/bili_tool_web:latest" >> "$tags_file"
-            fi
           fi
 
-          echo "将发布以下镜像标签："
+          echo "将发布以下 GHCR 镜像标签："
           cat "$tags_file"
           {
             echo 'tags<<EOF'

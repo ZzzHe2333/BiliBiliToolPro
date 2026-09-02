@@ -169,17 +169,21 @@ linux-musl-arm64
 
 ## 8. 中国大陆网络
 
-软件包源默认优先使用国内镜像：
+订阅任务默认**不改写**青龙容器的 apt/apk 软件源：
+
+```bash
+Zzz_BILI_USE_CN_MIRROR=false
+```
+
+原因是系统软件源属于整个青龙容器的全局状态，修改它可能影响同一面板中的其他任务。
+
+如果所在网络确实需要国内软件源，可以显式开启：
 
 ```bash
 Zzz_BILI_USE_CN_MIRROR=true
 ```
 
-不需要时可以关闭：
-
-```bash
-Zzz_BILI_USE_CN_MIRROR=false
-```
+开启后，安装环境时会把容器的 Debian/Alpine 软件源切换到 USTC 镜像；这不是仅对 BiliTool 生效的局部设置。已有自定义源或同面板运行其他项目时，建议保持 `false`。
 
 GitHub Release 下载代理：
 
@@ -218,7 +222,7 @@ Zzz_BILI_GITHUB_PROXY=""
 Zzz_BILI_MODE=bilitool
 ```
 
-或检查包源、网络以及 `.NET 8` 运行环境。
+或检查包源、网络以及 `.NET 8` 运行环境。若确实需要脚本修改容器系统源，再显式设置 `Zzz_BILI_USE_CN_MIRROR=true`。
 
 ### Couldn't find a valid ICU package
 

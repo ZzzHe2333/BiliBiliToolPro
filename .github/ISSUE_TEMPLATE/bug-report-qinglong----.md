@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 <!-- 请完整填写如下信息 -->
-<!-- 勾选项可以在提交之后，进行勾选 -->
+<!-- 勾选项可以在提交之后进行勾选 -->
 
 ### 版本
 
@@ -19,8 +19,8 @@ BiliTool版本号：`x.x.x`
 ### 确认
 
 - [ ] 是的，我已搜索并确认，没有其他相同的议题
-- [ ] 是的，我确认，已尝试升级bilitool到最新版，但未解决
-- [ ] 是的，我确认，已尝试升级青龙到最新版，但未解决
+- [ ] 是的，我确认，已重新运行 `Zzz-BiliBiliToolPro` 订阅并更新到最新 main
+- [ ] 是的，我确认，运行的是 `Zzz-Bili ...` 任务，而不是历史 `bili...` 任务
 
 ### 服务器架构
 
@@ -29,17 +29,11 @@ BiliTool版本号：`x.x.x`
 - [ ] arm
 - [ ] 其他（请在下面补充）
 
-### 服务器系统
+### 青龙宿主系统 / 容器基础系统
 
-- [ ] Windows
-- [ ] macOS
-- [ ] Linux
-    - [ ] Debian
-    - [ ] Ubuntu
-    - [ ] Windows
-    - [ ] Alpine
-    - [ ] Centos
-    - [ ] 其他（请在下面补充）
+- [ ] Debian / Ubuntu
+- [ ] Alpine
+- [ ] 其他（请在下面补充）
 
 ### 青龙容器类型
 
@@ -47,42 +41,31 @@ BiliTool版本号：`x.x.x`
 - [ ] Podman
 - [ ] 其他（请在下面补充）
 
-### 青龙镜像
-
-- [ ] whyour/qinglong:latest（Alpine）
-- [ ] whyour/qinglong:debian（Debian）
-
-### 选择的BiliTool运行模式
+### 选择的 BiliTool 运行模式
 
 - [ ] dotnet
 - [ ] bilitool
 
-### 如果是青龙拉库相关bug，请贴出拉库方式截图
+### 订阅与任务信息
 
-- [ ] 否
-- [ ] 是，截图如下
+请贴出订阅名称、订阅仓库目录以及出问题的定时任务名称。不要贴 Cookie、ClientSecret、Token。
 
-### 如果是缺失文件相关bug，请贴出容器内文件路径信息
+订阅名称：`Zzz-BiliBiliToolPro`
 
-- [ ] 否
-- [ ] 是，信息如下
+BiliTool 仓库目录：`<粘贴路径>`
 
-查看方式参考文档：[提示文件不存在或路径异常怎么排查](https://github.com/ZzzHe2333/BiliBiliToolPro/blob/main/qinglong/README.md#43-提示文件不存在或路径异常怎么排查)
+任务名称：`<例如 Zzz-Bili 每日任务>`
 
-BiliTool仓库文件路径：`<粘贴路径>`
-
-脚本文件路径：`<粘贴路径>`
-
-<这里贴截图>
+如属于“订阅成功但没有生成任务 / 加载旧账号 / 找不到仓库目录”等问题，请先按 [青龙部署文档的常见问题](https://github.com/ZzzHe2333/BiliBiliToolPro/blob/main/qinglong/README.md#10-常见问题) 排查。
 
 ### 问题描述
 
-<!-- 请在下方清晰的描述所您所遇到的问题 -->
+<!-- 请在下方清晰描述所遇到的问题 -->
 <这里>
 
 ### 日志信息
 
-<!-- 请在下方贴出Debug级别的日志信息，以便更高效的确定和解决问题 -->
+<!-- 请贴出 Debug 级别日志。提交前仍应自行检查并移除 Cookie、Authorization、Token、ClientSecret 等敏感值。 -->
 
 <details>
 

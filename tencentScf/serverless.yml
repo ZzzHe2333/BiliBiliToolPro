@@ -30,7 +30,9 @@ inputs:
           enable: false
           argument: VipBigPoint
   environment:
-    variables: {}
-    # 配置示例（不要把真实 Cookie 提交到仓库）：
-    # variables:
-    #   Zzz_BiliBiliCookies__1: "<COOKIE>"
+    variables:
+      # SCF 也使用本仓库严格隔离，避免宿主环境里的 Ray_* / 无前缀业务配置串入。
+      Zzz_IsolatedMode: "true"
+      # 配置示例（不要把真实 Cookie 提交到仓库）：
+      # Zzz_BiliBiliCookies__1: "<COOKIE>"
+      # Zzz_Security__RandomSleepMaxMin: "0"

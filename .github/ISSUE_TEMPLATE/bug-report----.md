@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 <!-- 请完整填写如下信息 -->
-<!-- 勾选项可以在提交之后，进行勾选 -->
+<!-- 勾选项可以在提交之后进行勾选 -->
 
 ### 版本
 
@@ -33,26 +33,27 @@ BiliTool版本号：`x.x.x`
 - [ ] Linux
     - [ ] Debian
     - [ ] Ubuntu
-    - [ ] Windows
     - [ ] Alpine
-    - [ ] Centos
+    - [ ] CentOS / RHEL
     - [ ] 其他（请在下面补充）
 
-### 选择的BiliTool运行模式
+### 选择的 BiliTool 运行模式
 
-- [ ] docker
-- [ ] podman
-- [ ] 下载的Release包
+- [ ] Docker
+- [ ] Podman
+- [ ] Helm / Kubernetes
+- [ ] 下载的正式 Release 包
+- [ ] 从源码运行
 - [ ] 其他（请在下面补充）
 
 ### 问题描述
 
-<!-- 请在下方清晰的描述所您所遇到的问题 -->
+<!-- 请在下方清晰描述所遇到的问题 -->
 <这里>
 
 ### 日志信息
 
-<!-- 请在下方贴出Debug级别的日志信息，以便更高效的确定和解决问题 -->
+<!-- 请在下方贴出 Debug 级别日志；提交前请移除 Cookie、Token、Authorization 等敏感信息 -->
 
 <details>
 
