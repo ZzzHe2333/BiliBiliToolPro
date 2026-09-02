@@ -17,7 +17,7 @@ public interface IUpInfoApi : IBiliBiliApi
     /// <param name="userId">uid</param>
     /// <returns></returns>
     [HttpGet("/x/space/wbi/acc/info")]
-    Task<BiliApiResponseOptionalData<GetSpaceInfoResponse>> GetSpaceInfo(
+    Task<GetSpaceInfoApiResponse> GetSpaceInfo(
         [PathQuery] GetSpaceInfoDto request,
         [Header("Cookie")] string ck
     );
