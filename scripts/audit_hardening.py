@@ -58,6 +58,16 @@ def main() -> int:
         "publication gate must bind required checks to the exact push commit",
     )
 
+    codeql = read(".github/workflows/codeql-analysis.yml")
+    require(
+        "paths:" not in codeql,
+        "CodeQL must run on every main/release and pull-request commit used by publication gates",
+    )
+    require(
+        "branches: [ main, release/* ]" in codeql and "branches: [ main ]" in codeql,
+        "CodeQL branch coverage must include main/release pushes and main pull requests",
+    )
+
     gated_workflows = (
         ".github/workflows/publish-image.yml",
         ".github/workflows/publish-fork-rolling-release.yml",
