@@ -7,10 +7,9 @@ set -o pipefail
 
 verbose=false                          # 开启debug日志
 bili_repo="ZzzHe2333/BiliBiliToolPro" # 仓库地址
-bili_branch=""                         # 分支名，空或_develop
 prefer_mode=${BILI_MODE:-"dotnet"}     # dotnet或bilitool，需要通过环境变量配置
 github_proxy=${BILI_GITHUB_PROXY:-""}  # 下载github release包时使用的代理，会拼在地址前面，需要通过环境变量配置
-use_cn_mirror=${BILI_USE_CN_MIRROR:-"true"} # 本fork主要面向中国大陆，默认使用国内包源
+use_cn_mirror=${BILI_USE_CN_MIRROR:-"false"} # 默认不修改整个青龙容器的软件源
 rolling_release_tag="fork-main"
 export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 
@@ -53,7 +52,6 @@ say_verbose() {
 }
 
 QL_DIR=${QL_DIR:-"/ql"}
-QL_BRANCH=${QL_BRANCH:-"develop"}
 DefaultCronRule=${DefaultCronRule:-""}
 CpuWarn=${CpuWarn:-""}
 MemoryWarn=${MemoryWarn:-""}
@@ -68,7 +66,7 @@ touch $dir_shell/env.sh && . $dir_shell/env.sh
 touch /root/.bashrc && . /root/.bashrc
 
 say "青龙repo目录: $dir_repo"
-qinglong_bili_repo="$(echo "$bili_repo" | sed 's/\//_/g')${bili_branch}"
+qinglong_bili_repo="$(echo "$bili_repo" | sed 's/\//_/g')"
 qinglong_bili_repo_dir="${BILI_REPO_DIR:-}"
 if [ -z "$qinglong_bili_repo_dir" ] || [ ! -d "$qinglong_bili_repo_dir" ]; then
     if [ -d "$dir_repo/$qinglong_bili_repo" ]; then
