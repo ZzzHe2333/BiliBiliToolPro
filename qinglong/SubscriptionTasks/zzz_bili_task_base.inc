@@ -29,6 +29,34 @@ if [ -z "$fork_repo_dir" ]; then
   exit 1
 fi
 
+report_zzz_repo_revision() {
+    local app_version="unknown"
+    local local_branch="unknown"
+    local local_commit="unknown"
+    local cached_origin_main=""
+
+    if [ -r "$fork_repo_dir/common.props" ]; then
+        app_version="$(sed -n 's/.*<Version>\([^<][^<]*\)<\/Version>.*/\1/p' "$fork_repo_dir/common.props" | head -1)"
+        [ -n "$app_version" ] || app_version="unknown"
+    fi
+
+    if command -v git >/dev/null 2>&1 && [ -d "$fork_repo_dir/.git" ]; then
+        local_commit="$(git -C "$fork_repo_dir" rev-parse --verify HEAD 2>/dev/null || printf 'unknown')"
+        local_branch="$(git -C "$fork_repo_dir" symbolic-ref --short -q HEAD 2>/dev/null || printf 'detached')"
+        cached_origin_main="$(git -C "$fork_repo_dir" rev-parse --verify refs/remotes/origin/main 2>/dev/null || true)"
+    fi
+
+    echo "[Zzz-Bili] 本地仓库版本：${app_version}; branch=${local_branch}; commit=${local_commit}"
+
+    # 这里只比较本地已有的 origin/main 引用，不访问网络，也不修改工作树。
+    # 若订阅长时间没有执行，cached origin/main 本身也可能已经过期，因此该提示只是辅助诊断。
+    if [ -n "$cached_origin_main" ] && [ "$local_commit" != "unknown" ] && [ "$local_commit" != "$cached_origin_main" ]; then
+        echo "[Zzz-Bili] 注意：本地 HEAD 与已缓存 origin/main 不一致；请重新运行青龙订阅更新仓库" >&2
+    fi
+}
+
+report_zzz_repo_revision
+
 export Zzz_IsolatedMode=true
 
 # 本项目青龙 Shell 辅助变量也使用 Zzz_ 命名空间，不继承通用 BILI_*，

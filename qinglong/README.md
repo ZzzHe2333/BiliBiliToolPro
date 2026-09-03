@@ -24,12 +24,14 @@ https://github.com/ZzzHe2333/BiliBiliToolPro.git
 链接：https://github.com/ZzzHe2333/BiliBiliToolPro.git
 分支：main
 定时类型：crontab
-定时规则：2 2 28 * *
+定时规则：2 2 * * *
 白名单：zzz_bili_task_.+\.sh
 文件后缀：sh
 ```
 
 其余项目留空即可。新版青龙直接使用“文件后缀”字段；旧版如果仍使用 `RepoFileExtensions`，请确保其中包含 `sh`。
+
+> 如果你此前使用旧文档中的 `2 2 28 * *`（每月更新一次），请手动执行一次该订阅，并把 Cron 改成 `2 2 * * *`。仓库中的修复无法反向更新一份长期未重新拉取的青龙本地副本。
 
 保存后执行一次订阅，青龙会从：
 
@@ -38,6 +40,8 @@ qinglong/SubscriptionTasks/
 ```
 
 建立 `Zzz-Bili ...` 定时任务。
+
+每日 02:02 刷新订阅的目的，是让安全修复、接口兼容修复和任务退出修复能在较短时间内进入青龙本地仓库；它只更新订阅仓库，不等于每天执行所有 BiliBiliToolPro 业务任务。
 
 ## 2. 当前订阅任务
 
@@ -193,9 +197,11 @@ Zzz_BILI_GITHUB_PROXY=""
 
 项目不会写死第三方 GitHub 代理地址，请仅配置自己信任的代理。
 
-## 9. 任务互斥与通知
+## 9. 任务互斥、版本诊断与通知
 
 所有 `Zzz-Bili` 任务共享源码和构建目录，公共脚本会加互斥锁，避免多个 `dotnet run` 并发造成 PDB/程序集锁冲突。
+
+每个任务启动时会打印当前青龙本地仓库的应用版本、分支和 commit。该信息只读取本地 Git 元数据，不访问网络；如果本地已有的 `origin/main` 引用与当前 HEAD 不一致，也会提示重新运行青龙订阅。需要注意：长期未执行订阅时，`origin/main` 本身也可能已经过期，因此判断是否已部署最新修复仍应以“重新执行订阅后看到的 commit”为准。
 
 任务完成后优先使用青龙面板系统通知，并在发送前对 Cookie、Authorization、Token、ClientSecret 等常见敏感字段脱敏。为了避免重复推送，任务运行时会屏蔽应用自身 `Zzz_Serilog__WriteTo__*` 推送配置。
 
@@ -209,6 +215,22 @@ Zzz_BILI_GITHUB_PROXY=""
 2. 白名单是否为 `zzz_bili_task_.+\.sh`；
 3. 订阅日志是否拉到了 `qinglong/SubscriptionTasks/`；
 4. 青龙版本是否支持从 Shell 注释解析 cron / Env 元数据。
+
+### 任务日志显示旧版本，或已修复的问题仍然出现
+
+先到“订阅管理”手动执行 `Zzz-BiliBiliToolPro`，然后确认订阅 Cron 已改为：
+
+```text
+2 2 * * *
+```
+
+重新执行任意 `Zzz-Bili ...` 任务后，开头应能看到：
+
+```text
+[Zzz-Bili] 本地仓库版本：...; branch=...; commit=...
+```
+
+如果仍显示旧版本/旧 commit，说明青龙实际执行的仓库目录没有更新，应检查订阅日志和任务命令指向的仓库路径。
 
 ### 仍然加载到旧账号或旧推送配置
 

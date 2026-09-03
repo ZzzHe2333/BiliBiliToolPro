@@ -48,6 +48,13 @@ mkdir -p "$sim_repo/qinglong/SubscriptionTasks" "$sim_repo/qinglong/DefaultTasks
   "$sim_repo/src/Ray.BiliBiliTool.Console" "$tmp_dir/bin"
 cp "$repo_root/qinglong/SubscriptionTasks/zzz_bili_task_base.inc" "$sim_repo/qinglong/SubscriptionTasks/zzz_bili_task_base.inc"
 cp "$helper" "$sim_repo/qinglong/SubscriptionTasks/zzz_bili_notify.js"
+cat > "$sim_repo/common.props" <<'PROPS'
+<Project>
+  <PropertyGroup>
+    <Version>9.9.9</Version>
+  </PropertyGroup>
+</Project>
+PROPS
 : > "$sim_repo/qinglong/DefaultTasks/bili_task_cleanup.inc"
 cat > "$sim_repo/qinglong/DefaultTasks/bili_task_base.inc" <<'INC'
 qinglong_bili_repo_dir="$BILI_REPO_DIR"
@@ -65,7 +72,11 @@ shell_output="$(PATH="$tmp_dir/bin:$PATH" QL_DIR="$tmp_dir/ql" BILI_REPO_DIR="$s
   set -e
   eval '\'' . "$BILI_REPO_DIR/qinglong/SubscriptionTasks/zzz_bili_task_base.inc"; run_task "Regression"; status=$?; printf "AFTER_RUN:%s\n" "$status" '\''
 ' 2>&1)"
+grep -Fq '[Zzz-Bili] 本地仓库版本：9.9.9; branch=unknown; commit=unknown' <<<"$shell_output"
 grep -Fq 'AFTER_RUN:2' <<<"$shell_output"
 ! grep -Fq 'pop_var_context' <<<"$shell_output"
 
-echo 'Qinglong errexit/eval regression test passed.'
+grep -Fq '定时规则：2 2 * * *' "$repo_root/qinglong/README.md"
+grep -Fq '每日 02:02 刷新订阅' "$repo_root/qinglong/README.md"
+
+echo 'Qinglong errexit/eval and subscription freshness regression test passed.'
