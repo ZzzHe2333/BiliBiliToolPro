@@ -62,9 +62,18 @@ prefer_mode=dotnet
 INC
 cat > "$tmp_dir/bin/dotnet" <<'DOTNET'
 #!/usr/bin/env bash
-echo '[00:00:00 INF] BiliBiliToolPro 开始运行...'
-echo '[00:00:01 ERR] simulated partial failure'
-exit 0
+case "${1:-}" in
+  build)
+    echo 'SIMULATED_BUILD_WARNING_NU1507'
+    exit 0
+    ;;
+  run)
+    echo '[00:00:00 INF] BiliBiliToolPro 开始运行...'
+    echo '[00:00:01 ERR] simulated partial failure'
+    exit 0
+    ;;
+esac
+exit 2
 DOTNET
 chmod +x "$tmp_dir/bin/dotnet"
 
@@ -74,16 +83,57 @@ shell_output="$(PATH="$tmp_dir/bin:$PATH" QL_DIR="$tmp_dir/ql" BILI_REPO_DIR="$s
 ' 2>&1)"
 grep -Fq '[Zzz-Bili] 本地仓库版本：9.9.9; branch=unknown; commit=unknown' <<<"$shell_output"
 grep -Fq '[Zzz-Bili] 主任务硬超时：7200 秒' <<<"$shell_output"
+grep -Fq '[00:00:00 INF] BiliBiliToolPro 开始运行...' <<<"$shell_output"
 grep -Fq 'AFTER_RUN:2' <<<"$shell_output"
+! grep -Fq 'SIMULATED_BUILD_WARNING_NU1507' <<<"$shell_output"
 ! grep -Fq 'pop_var_context' <<<"$shell_output"
+
+echo 'Qinglong successful-build log suppression regression test passed.'
+
+# A failed build must surface its captured diagnostics and must not launch the app.
+cat > "$tmp_dir/bin/dotnet" <<'DOTNET'
+#!/usr/bin/env bash
+case "${1:-}" in
+  build)
+    echo 'SIMULATED_BUILD_FAILURE_DETAIL'
+    exit 42
+    ;;
+  run)
+    echo 'SHOULD_NOT_RUN_AFTER_FAILED_BUILD'
+    exit 0
+    ;;
+esac
+exit 2
+DOTNET
+chmod +x "$tmp_dir/bin/dotnet"
+
+build_fail_output="$(PATH="$tmp_dir/bin:$PATH" QL_DIR="$tmp_dir/ql" BILI_REPO_DIR="$sim_repo" Zzz_BILI_NOTIFY_TIMEOUT_MS=300 bash -c '
+  set -e
+  eval '\'' . "$BILI_REPO_DIR/qinglong/SubscriptionTasks/zzz_bili_task_base.inc"; run_task "BuildFailureRegression"; status=$?; printf "AFTER_BUILD_FAIL:%s\n" "$status" '\''
+' 2>&1)"
+grep -Fq '[Zzz-Bili] .NET 构建失败，以下为构建日志：' <<<"$build_fail_output"
+grep -Fq 'SIMULATED_BUILD_FAILURE_DETAIL' <<<"$build_fail_output"
+grep -Fq 'AFTER_BUILD_FAIL:42' <<<"$build_fail_output"
+! grep -Fq 'SHOULD_NOT_RUN_AFTER_FAILED_BUILD' <<<"$build_fail_output"
+! grep -Fq 'pop_var_context' <<<"$build_fail_output"
+
+echo 'Qinglong failed-build diagnostic regression test passed.'
 
 # Simulate a main .NET process that never completes. The wrapper must terminate it,
 # release the Qinglong lock, finish notification handling, and return timeout status 124.
 cat > "$tmp_dir/bin/dotnet" <<'DOTNET'
 #!/usr/bin/env bash
-echo '[00:00:00 INF] BiliBiliToolPro 开始运行...'
-trap 'exit 143' TERM
-while :; do sleep 1; done
+case "${1:-}" in
+  build)
+    exit 0
+    ;;
+  run)
+    echo '[00:00:00 INF] BiliBiliToolPro 开始运行...'
+    trap 'exit 143' TERM
+    while :; do sleep 1; done
+    ;;
+esac
+exit 2
 DOTNET
 chmod +x "$tmp_dir/bin/dotnet"
 
