@@ -207,11 +207,27 @@ send_qinglong_notification() {
     node "$notify_helper" "$target_code" "$log_file" "$task_status" || true
 }
 
+get_zzz_task_timeout_seconds() {
+    local timeout_seconds="${Zzz_BILI_TASK_TIMEOUT_SECONDS:-7200}"
+
+    case "$timeout_seconds" in
+        ''|*[!0-9]*|0)
+            echo "[Zzz-Bili] Zzz_BILI_TASK_TIMEOUT_SECONDS 非有效正整数，使用默认 7200 秒" >&2
+            timeout_seconds=7200
+            ;;
+    esac
+
+    printf '%s\n' "$timeout_seconds"
+}
+
 run_task() {
     local target_code=$1
     local log_file
     local task_status
     local logical_status
+    local task_timeout_seconds
+    local task_started_epoch
+    local task_elapsed_seconds
 
     export Zzz_PlatformType=QingLong
     export Zzz_RunTasks="$target_code"
@@ -221,19 +237,32 @@ run_task() {
     log_file="$(mktemp "/tmp/zzz-bili-${target_code}.XXXXXX.log")"
     cd "$qinglong_bili_repo_dir/src/Ray.BiliBiliTool.Console"
 
+    task_timeout_seconds="$(get_zzz_task_timeout_seconds)"
+    echo "[Zzz-Bili] 主任务硬超时：${task_timeout_seconds} 秒"
+    task_started_epoch="$(date +%s)"
+
     set +e
-    if [ "$prefer_mode" == "dotnet" ]; then
-        dotnet run --ENVIRONMENT=Production 2>&1 | tee "$log_file"
+    if ! command -v timeout >/dev/null 2>&1; then
+        echo "[Zzz-Bili] 系统缺少 timeout 命令，为避免无界运行，本次任务拒绝启动" | tee "$log_file" >&2
+        task_status=127
+    elif [ "$prefer_mode" == "dotnet" ]; then
+        timeout -k 10 "$task_timeout_seconds" dotnet run --ENVIRONMENT=Production 2>&1 | tee "$log_file"
         task_status=${PIPESTATUS[0]}
     else
         cp -f "$qinglong_bili_repo_dir/bin/Ray.BiliBiliTool.Console" .
         chmod +x ./Ray.BiliBiliTool.Console
-        ./Ray.BiliBiliTool.Console --ENVIRONMENT=Production 2>&1 | tee "$log_file"
+        timeout -k 10 "$task_timeout_seconds" ./Ray.BiliBiliTool.Console --ENVIRONMENT=Production 2>&1 | tee "$log_file"
         task_status=${PIPESTATUS[0]}
     fi
     set -e
 
-    # 主程序结束后立即释放锁，通知发送不占用 BiliTool 的执行槽位。
+    task_elapsed_seconds=$(( $(date +%s) - task_started_epoch ))
+    if [ "$task_status" -eq 124 ] || { [ "$task_elapsed_seconds" -ge "$task_timeout_seconds" ] && { [ "$task_status" -eq 137 ] || [ "$task_status" -eq 143 ]; }; }; then
+        task_status=124
+        echo "[Zzz-Bili] 主任务执行超过 ${task_timeout_seconds} 秒，已强制终止" | tee -a "$log_file" >&2
+    fi
+
+    # 主程序结束或超时后立即释放锁，通知发送不占用 BiliTool 的执行槽位。
     release_zzz_task_lock
     trap - EXIT INT TERM
 
