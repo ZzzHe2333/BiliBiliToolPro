@@ -73,10 +73,36 @@ shell_output="$(PATH="$tmp_dir/bin:$PATH" QL_DIR="$tmp_dir/ql" BILI_REPO_DIR="$s
   eval '\'' . "$BILI_REPO_DIR/qinglong/SubscriptionTasks/zzz_bili_task_base.inc"; run_task "Regression"; status=$?; printf "AFTER_RUN:%s\n" "$status" '\''
 ' 2>&1)"
 grep -Fq '[Zzz-Bili] 本地仓库版本：9.9.9; branch=unknown; commit=unknown' <<<"$shell_output"
+grep -Fq '[Zzz-Bili] 主任务硬超时：7200 秒' <<<"$shell_output"
 grep -Fq 'AFTER_RUN:2' <<<"$shell_output"
 ! grep -Fq 'pop_var_context' <<<"$shell_output"
 
+# Simulate a main .NET process that never completes. The wrapper must terminate it,
+# release the Qinglong lock, finish notification handling, and return timeout status 124.
+cat > "$tmp_dir/bin/dotnet" <<'DOTNET'
+#!/usr/bin/env bash
+echo '[00:00:00 INF] BiliBiliToolPro 开始运行...'
+trap 'exit 143' TERM
+while :; do sleep 1; done
+DOTNET
+chmod +x "$tmp_dir/bin/dotnet"
+
+start="$(date +%s)"
+timeout_output="$(PATH="$tmp_dir/bin:$PATH" QL_DIR="$tmp_dir/ql" BILI_REPO_DIR="$sim_repo" Zzz_BILI_TASK_TIMEOUT_SECONDS=1 Zzz_BILI_NOTIFY_TIMEOUT_MS=300 bash -c '
+  set -e
+  eval '\'' . "$BILI_REPO_DIR/qinglong/SubscriptionTasks/zzz_bili_task_base.inc"; run_task "TimeoutRegression"; status=$?; printf "AFTER_TIMEOUT:%s\n" "$status" '\''
+' 2>&1)"
+elapsed=$(( $(date +%s) - start ))
+[ "$elapsed" -lt 6 ]
+grep -Fq '[Zzz-Bili] 主任务硬超时：1 秒' <<<"$timeout_output"
+grep -Fq '[Zzz-Bili] 主任务执行超过 1 秒，已强制终止' <<<"$timeout_output"
+grep -Fq 'AFTER_TIMEOUT:124' <<<"$timeout_output"
+! grep -Fq 'pop_var_context' <<<"$timeout_output"
+
+echo 'Qinglong main task timeout regression test passed.'
+
 grep -Fq '定时规则：2 2 * * *' "$repo_root/qinglong/README.md"
 grep -Fq '每日 02:02 刷新订阅' "$repo_root/qinglong/README.md"
+grep -Fq 'Zzz_BILI_TASK_TIMEOUT_SECONDS=7200' "$repo_root/qinglong/README.md"
 
 echo 'Qinglong errexit/eval and subscription freshness regression test passed.'
