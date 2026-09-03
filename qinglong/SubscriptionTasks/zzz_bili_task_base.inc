@@ -223,11 +223,14 @@ get_zzz_task_timeout_seconds() {
 run_task() {
     local target_code=$1
     local log_file
+    local build_log
+    local build_status
     local task_status
     local logical_status
     local task_timeout_seconds
     local task_started_epoch
     local task_elapsed_seconds
+    local task_remaining_seconds
 
     export Zzz_PlatformType=QingLong
     export Zzz_RunTasks="$target_code"
@@ -235,6 +238,7 @@ run_task() {
     disable_bilitool_env_notifications
 
     log_file="$(mktemp "/tmp/zzz-bili-${target_code}.XXXXXX.log")"
+    build_log="$(mktemp "/tmp/zzz-bili-${target_code}.build.XXXXXX.log")"
     cd "$qinglong_bili_repo_dir/src/Ray.BiliBiliTool.Console"
 
     task_timeout_seconds="$(get_zzz_task_timeout_seconds)"
@@ -246,8 +250,27 @@ run_task() {
         echo "[Zzz-Bili] 系统缺少 timeout 命令，为避免无界运行，本次任务拒绝启动" | tee "$log_file" >&2
         task_status=127
     elif [ "$prefer_mode" == "dotnet" ]; then
-        timeout -k 10 "$task_timeout_seconds" dotnet run --ENVIRONMENT=Production 2>&1 | tee "$log_file"
-        task_status=${PIPESTATUS[0]}
+        # dotnet run 会把 restore/build warning 和业务运行日志混在一起。
+        # 先静默构建：成功时不污染青龙日志；失败时再完整展开构建诊断。
+        timeout -k 10 "$task_timeout_seconds" dotnet build --nologo --verbosity quiet >"$build_log" 2>&1
+        build_status=$?
+
+        if [ "$build_status" -ne 0 ]; then
+            task_status=$build_status
+            if [ "$build_status" -ne 124 ]; then
+                echo "[Zzz-Bili] .NET 构建失败，以下为构建日志：" | tee "$log_file" >&2
+                cat "$build_log" | tee -a "$log_file" >&2
+            fi
+        else
+            task_elapsed_seconds=$(( $(date +%s) - task_started_epoch ))
+            task_remaining_seconds=$(( task_timeout_seconds - task_elapsed_seconds ))
+            if [ "$task_remaining_seconds" -le 0 ]; then
+                task_status=124
+            else
+                timeout -k 10 "$task_remaining_seconds" dotnet run --no-build --no-restore --ENVIRONMENT=Production 2>&1 | tee "$log_file"
+                task_status=${PIPESTATUS[0]}
+            fi
+        fi
     else
         cp -f "$qinglong_bili_repo_dir/bin/Ray.BiliBiliTool.Console" .
         chmod +x ./Ray.BiliBiliTool.Console
@@ -255,6 +278,8 @@ run_task() {
         task_status=${PIPESTATUS[0]}
     fi
     set -e
+
+    rm -f "$build_log"
 
     task_elapsed_seconds=$(( $(date +%s) - task_started_epoch ))
     if [ "$task_status" -eq 124 ] || { [ "$task_elapsed_seconds" -ge "$task_timeout_seconds" ] && { [ "$task_status" -eq 137 ] || [ "$task_status" -eq 143 ]; }; }; then
