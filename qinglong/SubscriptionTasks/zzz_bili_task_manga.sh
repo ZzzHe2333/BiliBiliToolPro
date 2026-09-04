@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # cron:0 14 * * *
-# new Env("Zzz-Bili 漫画任务")
+# new Env("Zzz-Bili 每日漫画任务")
 
 QL_DIR=${QL_DIR:-/ql}
 BILI_REPO_ROOT="$QL_DIR/data/repo"
