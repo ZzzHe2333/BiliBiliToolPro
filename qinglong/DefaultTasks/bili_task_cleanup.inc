@@ -49,10 +49,11 @@ const retiredFiles = [
 const taskDefs = [
   ['daily', /zzz_bili_task_daily\.sh/i, ['Zzz-Bili 每日任务']],
   ['charge', /zzz_bili_task_charge\.sh/i, ['Zzz-Bili 免费B币券充电任务']],
+  ['cronGuard', /zzz_bili_task_cron_guard\.sh/i, ['Zzz-Bili 定时保护']],
   ['login', /zzz_bili_task_login\.sh/i, ['Zzz-Bili 扫码登录']],
   ['liveFansMedal', /zzz_bili_task_liveFansMedal\.sh/i, ['Zzz-Bili 直播粉丝牌']],
-  ['manga', /zzz_bili_task_manga\.sh/i, ['Zzz-Bili 漫画任务']],
-  ['mangaPrivilege', /zzz_bili_task_manga_privilege\.sh/i, ['Zzz-Bili 领取大会员漫画权益任务']],
+  ['manga', /zzz_bili_task_manga\.sh/i, ['Zzz-Bili 每日漫画任务', 'Zzz-Bili 漫画任务']],
+  ['mangaPrivilege', /zzz_bili_task_manga_privilege\.sh/i, ['Zzz-Bili 领取大会员每月漫画权益任务', 'Zzz-Bili 领取大会员漫画权益任务']],
   ['vipBigPoint', /zzz_bili_task_vipBigPoint\.sh/i, ['Zzz-Bili 大会员大积分']],
   ['vipPrivilege', /zzz_bili_task_vip_privilege\.sh/i, ['Zzz-Bili 领取大会员福利任务']],
   ['test', /zzz_bili_task_test\.sh/i, ['Zzz-Bili 测试Cookie']],
