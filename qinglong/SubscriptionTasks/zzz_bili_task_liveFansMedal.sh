@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# cron:5 0 * * *
+# cron:21 0 * * *
 # new Env("Zzz-Bili 直播粉丝牌")
 
 QL_DIR=${QL_DIR:-/ql}
