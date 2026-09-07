@@ -152,3 +152,5 @@ Zzz_BiliBiliCookies__2
 ## License
 
 项目按 [GNU GPL v3](LICENSE) 发布。项目由历史 BiliBiliToolPro 代码持续演进，原有版权、作者信息和许可证声明继续保留。
+
+<!-- maintenance-refresh: 2026-09-07 -->
